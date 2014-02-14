@@ -24,6 +24,7 @@ Options:
 from __future__ import unicode_literals, print_function
 from docopt import docopt
 from fabric.api import local
+from boto.s3.connection import S3Connection
 
 __version__ = "0.1.0"
 __author__ = "Yohan Graterol"
@@ -82,6 +83,19 @@ def backup_all(args):
     local(query.format(username=username,
                        password=password,
                        path=path))
+
+
+def upload_backup(name_backup=None, bucket_name=None):
+    if not name_backup:
+        raise SystemExit('Error #03: Backup name is not defined.')
+    if not bucket_name:
+        raise SystemExit('Error #04: Bucket name is not defined.')
+    from boto.s3.key import Key
+    conn = S3Connection('<aws access key>', '<aws secret key>')
+    bucket = conn.get_bucket(bucket_name)
+    k = Key(bucket)
+    k.key = name_backup
+    k.set_contents_from_filename(name_backup)
 
 
 if __name__ == '__main__':
