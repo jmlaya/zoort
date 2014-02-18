@@ -27,13 +27,13 @@ def read(fname):
 
 setup(
     name='zoort',
-    version="0.1.2",
+    version="0.1.3",
     description='A Python script for automatic MongoDB backups',
     long_description=read("README.rst"),
     author='Yohan Graterol',
     author_email='y@mejorando.la | yograterol@fedoraproject.org',
     url='https://github.com/yograterol/zoort',
-    install_requires=['docopt'],
+    install_requires=['docopt', 'fabric', 'boto'],
     license=read("LICENSE"),
     zip_safe=False,
     keywords='zoort, mongodb, backups',
