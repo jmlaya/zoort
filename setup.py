@@ -27,7 +27,7 @@ def read(fname):
 
 setup(
     name='zoort',
-    version="0.1.0",
+    version="0.1.1",
     description='A Python script for automatic MongoDB backups',
     long_description=read("README.rst"),
     author='Yohan Graterol',

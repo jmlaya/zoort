@@ -16,7 +16,7 @@ A Python script for automatic MongoDB backups
 Features
 --------
 
-* Backup for all databases or one database.
+* Backup for just one or all your MongoDB Databases.
 * Encrypt and Decrypt output dump file.
 * Upload file to S3 bucket.
 
