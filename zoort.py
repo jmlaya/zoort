@@ -27,6 +27,7 @@ import json
 import os
 import datetime
 import boto
+import shutil
 from boto.s3.key import Key
 from docopt import docopt
 from functools import wraps
@@ -193,6 +194,8 @@ def backup_database(args):
                        path=path))
     compress_file = compress_folder_dump(normalize_path(path) + 'dump')
 
+    shutil.rmtree(normalize_path(path) + 'dump')
+
     optional_actions(encrypt, s3, path, compress_file)
 
 
@@ -220,7 +223,10 @@ def backup_all(args):
     local(query.format(username=username,
                        password=password,
                        path=path))
+
     compress_file = compress_folder_dump(normalize_path(path) + 'dump')
+
+    shutil.rmtree(normalize_path(path) + 'dump')
 
     optional_actions(encrypt, s3, path, compress_file)
 
