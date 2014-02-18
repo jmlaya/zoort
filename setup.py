@@ -6,6 +6,8 @@ import subprocess
 
 from setuptools import setup
 
+data_files = [('etc', ['etc/myapp.cfg'])]
+
 PUBLISH_CMD = "python setup.py register sdist upload"
 TEST_PUBLISH_CMD = 'python setup.py register -r test sdist upload -r test'
 
@@ -53,4 +55,5 @@ setup(
             "zoort = zoort:main"
         ]
     },
+    data_files=[('/etc/zoort', ['etc/config.json', ])]
 )
