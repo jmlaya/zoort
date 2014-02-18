@@ -1,5 +1,5 @@
 ===============================
-zoort
+ Zoort
 ===============================
 
 .. image:: https://badge.fury.io/py/zoort.png
@@ -7,7 +7,8 @@ zoort
 
 .. image:: https://pypip.in/d/zoort/badge.png
         :target: https://crate.io/packages/zoort?version=latest
-
+.. image:: https://mejorando.la/static/images/logos/mejorandola.png
+        :target: https://www.mejorando.la
 
 A Python script for automatic MongoDB backups
 
