@@ -1,3 +1,5 @@
+# Copyright (C) 2014 Mejorando.la - www.mejorando.la
+# Yohan Graterol - <y@mejorando.la>
 import sys
 import os
 import subprocess

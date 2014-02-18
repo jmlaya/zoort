@@ -5,9 +5,6 @@ zoort
 .. image:: https://badge.fury.io/py/zoort.png
     :target: http://badge.fury.io/py/zoort
 
-.. image:: https://travis-ci.org/yograterol/zoort.png?branch=master
-        :target: https://travis-ci.org/yograterol/zoort
-
 .. image:: https://pypip.in/d/zoort/badge.png
         :target: https://crate.io/packages/zoort?version=latest
 
