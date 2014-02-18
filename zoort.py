@@ -116,6 +116,7 @@ def encrypt_file(path, output):
     query = 'openssl aes-128-cbc -salt -in {0} -out {1} -k {2}'
     with hide('output'):
         local(query.format(path, output, PASSWORD_FILE))
+        os.remove(path)
 
 
 def decrypt_file(path):
