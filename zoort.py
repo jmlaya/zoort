@@ -175,10 +175,6 @@ def backup_database(args):
     if path and not os.path.isdir(path):
         raise SystemExit('Error #05: Path for dump is not dir.')
 
-    if (ADMIN_USER and ADMIN_PASSWORD) and not username or not password:
-        username = ADMIN_USER
-        password = ADMIN_PASSWORD
-
     query = 'mongodump -d {database} --host {host} '
     if username:
         query += '-u {username} '
@@ -208,6 +204,10 @@ def backup_all(args):
     path = args.get('[--path]') or os.getcwd()
     s3 = args.get('--upload_s3')
     encrypt = args.get('--encrypt') or 'Y'
+
+    if (ADMIN_USER and ADMIN_PASSWORD) and not username or not password:
+        username = ADMIN_USER
+        password = ADMIN_PASSWORD
 
     if not username or not password:
         raise SystemExit('Error #02: User or password for '
