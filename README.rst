@@ -1,15 +1,15 @@
 ===============================
-mongo_backups
+zoort
 ===============================
 
-.. image:: https://badge.fury.io/py/mongo_backups.png
-    :target: http://badge.fury.io/py/mongo_backups
+.. image:: https://badge.fury.io/py/zoort.png
+    :target: http://badge.fury.io/py/zoort
 
-.. image:: https://travis-ci.org/yograterol/mongo_backups.png?branch=master
-        :target: https://travis-ci.org/yograterol/mongo_backups
+.. image:: https://travis-ci.org/yograterol/zoort.png?branch=master
+        :target: https://travis-ci.org/yograterol/zoort
 
-.. image:: https://pypip.in/d/mongo_backups/badge.png
-        :target: https://crate.io/packages/mongo_backups?version=latest
+.. image:: https://pypip.in/d/zoort/badge.png
+        :target: https://crate.io/packages/zoort?version=latest
 
 
 A Python script for automatic MongoDB backups
@@ -18,6 +18,8 @@ Features
 --------
 
 * Backup for all databases or one database.
+* Encrypt and Decrypt output dump file.
+* Upload file to S3 bucket.
 
 Requirements
 ------------
@@ -27,4 +29,4 @@ Requirements
 License
 -------
 
-MIT licensed. See the bundled `LICENSE <https://github.com/yograterol/mongo_backups/blob/master/LICENSE>`_ file for more details.
+MIT licensed. See the bundled `LICENSE <https://github.com/yograterol/zoort/blob/master/LICENSE>`_ file for more details.

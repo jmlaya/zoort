@@ -6,7 +6,6 @@ from setuptools import setup
 
 PUBLISH_CMD = "python setup.py register sdist upload"
 TEST_PUBLISH_CMD = 'python setup.py register -r test sdist upload -r test'
-TEST_CMD = 'nosetests'
 
 if 'publish' in sys.argv:
     status = subprocess.call(PUBLISH_CMD, shell=True)
@@ -16,14 +15,6 @@ if 'publish_test' in sys.argv:
     status = subprocess.call(TEST_PUBLISH_CMD, shell=True)
     sys.exit()
 
-if 'run_tests' in sys.argv:
-    try:
-        __import__('nose')
-    except ImportError:
-        print('nose required. Run `pip install nose`.')
-        sys.exit(1)
-    status = subprocess.call(TEST_CMD, shell=True)
-    sys.exit(status)
 
 def read(fname):
     with open(fname) as fp:
@@ -31,17 +22,17 @@ def read(fname):
     return content
 
 setup(
-    name='mongo_backups',
+    name='zoort',
     version="0.1.0",
     description='A Python script for automatic MongoDB backups',
     long_description=read("README.rst"),
     author='Yohan Graterol',
     author_email='y@mejorando.la | yograterol@fedoraproject.org',
-    url='https://github.com/yograterol/mongo_backups',
+    url='https://github.com/yograterol/zoort',
     install_requires=['docopt'],
     license=read("LICENSE"),
     zip_safe=False,
-    keywords='mongo_backups',
+    keywords='zoort, mongodb, backups',
     classifiers=[
         'Development Status :: 2 - Pre-Alpha',
         'Intended Audience :: Developers',
@@ -54,11 +45,10 @@ setup(
         'Programming Language :: Python :: Implementation :: CPython',
         'Programming Language :: Python :: Implementation :: PyPy'
     ],
-    py_modules=["mongo_backups"],
+    py_modules=["zoort"],
     entry_points={
         'console_scripts': [
-            "mongo_backups = mongo_backups:main"
+            "zoort = zoort:main"
         ]
     },
-    tests_require=['nose'],
 )

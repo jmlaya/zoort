@@ -3,16 +3,16 @@
 # Copyright (C) 2014 Mejorando.la - www.mejorando.la
 # Yohan Graterol - <y@mejorando.la>
 
-'''mongo_backups
+'''zoort
 
 Usage:
-  mongo_backups backup <database> [--path=<path>] [--upload_s3=<s3>] [--encrypt=<encrypt>]
-  mongo_backups backup <database> <user> <password> [--path=<path>] [--upload_s3=<s3>] [--encrypt=<encrypt>]
-  mongo_backups backup <database> <user> <password> <host> [--path=<path>] [--upload_s3=<s3>] [--encrypt=<encrypt>]
-  mongo_backups backup_all <user_admin> <password_admin> [--path=<path>] [--upload_s3=<s3>] [--encrypt=<encrypt>]
-  mongo_backups decrypt <path>
-  mongo_backups --version
-  mongo_backups --help
+  zoort backup <database> [--path=<path>] [--upload_s3=<s3>] [--encrypt=<encrypt>]
+  zoort backup <database> <user> <password> [--path=<path>] [--upload_s3=<s3>] [--encrypt=<encrypt>]
+  zoort backup <database> <user> <password> <host> [--path=<path>] [--upload_s3=<s3>] [--encrypt=<encrypt>]
+  zoort backup_all <user_admin> <password_admin> [--path=<path>] [--upload_s3=<s3>] [--encrypt=<encrypt>]
+  zoort decrypt <path>
+  zoort --version
+  zoort --help
 
 Options:
   -h --help           Show this screen.
@@ -55,13 +55,13 @@ def load_config(func):
     def wrapper(*args, **kwargs):
         config = None
         try:
-            config = open('/etc/mongo_backups/config.json')
+            config = open('/etc/zoort/config.json')
         except IOError:
             try:
                 config = open(
                     os.path.join(
                         os.path.expanduser('~'),
-                        '.mongo_backups/config.json'))
+                        '.zoort/config.json'))
             except IOError:
                 raise SystemExit('Error #00: Can\'t load config.')
         config_data = json.load(config)
