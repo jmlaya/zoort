@@ -34,7 +34,7 @@ from functools import wraps
 from fabric.api import local, hide
 from fabric.colors import blue
 
-__version__ = '0.1.0'
+__version__ = '0.1.5'
 __author__ = 'Yohan Graterol'
 __license__ = 'MIT'
 
