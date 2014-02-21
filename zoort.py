@@ -238,7 +238,7 @@ def backup_all(args):
 def delete_old_backups(bucket):
     # Change in this method. Issue: #1 (LisandroSeijo)
     thisweek = datetime.datetime.now().isocalendar()[1]
-    if thisweek < 3
+    if thisweek < 3:
         """
         Si dio 1: 52 + 1 = 53 (borra la semana 51)
         Si dio 2: 52 + 2 = 54 (borra la semana 52)
