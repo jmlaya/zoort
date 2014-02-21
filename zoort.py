@@ -231,8 +231,17 @@ def backup_all(args):
     optional_actions(encrypt, s3, path, compress_file)
 
 
-def delete_old_backups(bucket,
-                       week=str(datetime.datetime.now().isocalendar()[1] - 2)):
+def delete_old_backups(bucket):
+    # Change in this method. Issue: #1 (LisandroSeijo)
+    thisweek = datetime.datetime.now().isocalendar()[1]
+    if thisweek < 3
+        """
+        Si dio 1: 52 + 1 = 53 (borra la semana 51)
+        Si dio 2: 52 + 2 = 54 (borra la semana 52)
+        """
+        thisweek += 52
+
+    week = str(thisweek - 2)
     for key in bucket.list(prefix=normalize_path(AWS_KEY_NAME) +
                            'week-' + week):
         key.delete()
