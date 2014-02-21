@@ -109,22 +109,26 @@ def compress_folder_dump(path):
     return (name_out_file, name_out_file + '.tar.gz')
 
 
-def encrypt_file(path, output):
+def encrypt_file(path, output, password=None):
     '''
     Encrypt file with AES method and password.
     '''
     global PASSWORD_FILE
+    if not password:
+        password = PASSWORD_FILE
     query = 'openssl aes-128-cbc -salt -in {0} -out {1} -k {2}'
     with hide('output'):
-        local(query.format(path, output, PASSWORD_FILE))
+        local(query.format(path, output, password))
         os.remove(path)
 
 
-def decrypt_file(path):
+def decrypt_file(path, password=None):
     '''
     Decrypt file with AES method and password.
     '''
     global PASSWORD_FILE
+    if not password:
+        password = PASSWORD_FILE
     if path and not os.path.isfile(path):
         raise SystemExit('Error #06: Path is not file.')
     query = 'openssl aes-128-cbc -d -salt -in {0} -out {1} -k {2}'
@@ -253,7 +257,7 @@ def upload_backup(name_backup=None, bucket_name=None):
     delete_old_backups(bucket=bucket)
     k = Key(bucket)
     if not AWS_KEY_NAME:
-        AWS_KEY_NAME = 'mongodb/'
+        AWS_KEY_NAME = 'dump/'
     s3_key = (normalize_path(AWS_KEY_NAME) + 'week-' +
               str(datetime.datetime.now().isocalendar()[1]) +
               '/' + name_backup.split('/')[-1])
