@@ -26,6 +26,7 @@ from __future__ import unicode_literals, print_function
 import json
 import os
 import datetime
+import time
 import boto
 import shutil
 from boto.s3.key import Key
@@ -45,6 +46,9 @@ AWS_SECRET_KEY = None
 AWS_BUCKET_NAME = None
 AWS_KEY_NAME = None
 PASSWORD_FILE = None
+
+DELETE_BACKUP = True
+DELETE_WEEKS = 2
 
 
 def load_config(func):
@@ -236,19 +240,30 @@ def backup_all(args):
 
 
 def delete_old_backups(bucket):
-    # Change in this method. Issue: #1 (LisandroSeijo)
-    thisweek = datetime.datetime.now().isocalendar()[1]
-    if thisweek < 3:
-        """
-        Si dio 1: 52 + 1 = 53 (borra la semana 51)
-        Si dio 2: 52 + 2 = 54 (borra la semana 52)
-        """
-        thisweek += 52
+    global DELETE_BACKUP
 
-    week = str(thisweek - 2)
-    for key in bucket.list(prefix=normalize_path(AWS_KEY_NAME) +
-                           'week-' + week):
+    if is not DELETE_BACKUP:
+        return
+
+    for key in get_old_backups(bucket):
         key.delete()
+
+
+def get_old_backups(bucket):
+    global DELETE_WEEKS
+    global AWS_KEY_NAME
+    ret = []
+    now = int(time.time())
+    dif = DELETE_WEEKS * 7 * 24 * 60
+    cut = len(normalize_path(AWS_KEY_NAME) + 'week-')
+
+    for key in bucket.list():
+        idate = int(key.name[cut:])
+
+        if (now - idate) > dif:
+            ret.append(key)
+
+    return ret
 
 
 def upload_backup(name_backup=None, bucket_name=None):
@@ -268,7 +283,7 @@ def upload_backup(name_backup=None, bucket_name=None):
     if not AWS_KEY_NAME:
         AWS_KEY_NAME = 'dump/'
     s3_key = (normalize_path(AWS_KEY_NAME) + 'week-' +
-              str(datetime.datetime.now().isocalendar()[1]) +
+              str(int(time.time())) +
               '/' + name_backup.split('/')[-1])
     print(blue('Uploading {0} to {1}.'.format(name_backup, s3_key)))
     k.key = s3_key
