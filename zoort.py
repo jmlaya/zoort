@@ -27,6 +27,7 @@ import json
 import os
 import datetime
 import time
+import dateutil.parser
 import boto
 import shutil
 from boto.s3.key import Key
@@ -256,10 +257,13 @@ def get_old_backups(bucket):
     ret = []
     now = int(time.time())
     dif = DELETE_WEEKS * 7 * 24 * 60
-    cut = len(normalize_path(AWS_KEY_NAME) + 'week-')
 
     for key in bucket.list():
-        idate = int(key.name[cut:])
+        creation_date = dateutil.parser.parse(key.creation_date)
+        format = '%m-%d-%Y %H:%M:%S'
+        #convierte el formato '%m-%d-%Y %H:%M:%S.000z' a segundos
+        idate = int(time.mktime(time.strptime(creation_date.strftime(format), format)))
+        
         if (now - idate) >= dif:
             ret.append(key)
 
@@ -283,7 +287,7 @@ def upload_backup(name_backup=None, bucket_name=None):
     if not AWS_KEY_NAME:
         AWS_KEY_NAME = 'dump/'
     s3_key = (normalize_path(AWS_KEY_NAME) + 'week-' +
-              str(int(time.time())) +
+             str(datetime.datetime.now().isocalendar()[1]) +
               '/' + name_backup.split('/')[-1])
     print(blue('Uploading {0} to {1}.'.format(name_backup, s3_key)))
     k.key = s3_key
