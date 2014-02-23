@@ -46,9 +46,8 @@ AWS_SECRET_KEY = None
 AWS_BUCKET_NAME = None
 AWS_KEY_NAME = None
 PASSWORD_FILE = None
-
-DELETE_BACKUP = True
-DELETE_WEEKS = 2
+DELETE_BACKUP = None
+DELETE_WEEKS = None
 
 
 def load_config(func):
@@ -85,6 +84,8 @@ def load_config(func):
         AWS_SECRET_KEY = config_data.get('aws').get('aws_secret_key')
         AWS_BUCKET_NAME = config_data.get('aws').get('aws_bucket_name')
         AWS_KEY_NAME = config_data.get('aws').get('aws_key_name')
+        DELETE_BACKUP = config_data.get('delete_backup')
+        DELETE_WEEKS = config_data.get('delete_weeks')
         return func(*args, **kwargs)
     return wrapper
 
@@ -242,7 +243,7 @@ def backup_all(args):
 def delete_old_backups(bucket):
     global DELETE_BACKUP
 
-    if is not DELETE_BACKUP:
+    if not DELETE_BACKUP:
         return
 
     for key in get_old_backups(bucket):
@@ -259,8 +260,7 @@ def get_old_backups(bucket):
 
     for key in bucket.list():
         idate = int(key.name[cut:])
-
-        if (now - idate) > dif:
+        if (now - idate) >= dif:
             ret.append(key)
 
     return ret
