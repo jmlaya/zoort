@@ -259,10 +259,15 @@ def get_old_backups(bucket):
     dif = DELETE_WEEKS * 7 * 24 * 60
 
     for key in bucket.list():
+        #fecha de creación del archivo
         creation_date = dateutil.parser.parse(key.creation_date)
         format = '%m-%d-%Y %H:%M:%S'
-        #convierte el formato '%m-%d-%Y %H:%M:%S.000z' a segundos
-        idate = int(time.mktime(time.strptime(creation_date.strftime(format), format)))
+        #convierte el formato '%m-%d-%YT%H:%M:%S.000z' a '%m-%d-%Y %H:%M:%S'
+        cd_strf = creation_date.strftime(format)
+        #convierte el formato '%m-%d-%Y %H:%M:%S' a time.struct_time
+        cd_struct = time.strptime(cd_strf, format)
+        #convierte time.struct_time a segundos
+        idate = int(time.mktime(cd_struct))
         
         if (now - idate) >= dif:
             ret.append(key)
@@ -287,7 +292,7 @@ def upload_backup(name_backup=None, bucket_name=None):
     if not AWS_KEY_NAME:
         AWS_KEY_NAME = 'dump/'
     s3_key = (normalize_path(AWS_KEY_NAME) + 'week-' +
-             str(datetime.datetime.now().isocalendar()[1]) +
+              str(datetime.datetime.now().isocalendar()[1]) +
               '/' + name_backup.split('/')[-1])
     print(blue('Uploading {0} to {1}.'.format(name_backup, s3_key)))
     k.key = s3_key
