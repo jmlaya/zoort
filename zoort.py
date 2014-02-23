@@ -46,6 +46,17 @@ AWS_BUCKET_NAME = None
 AWS_KEY_NAME = None
 PASSWORD_FILE = None
 
+# Can be loaded from an import, but I put here
+# for simplicity.
+_error_codes = {
+    00: u'Error #00: Can\'t load config.',
+    01: u'Error #01: Database is not define.',
+    03: u'Error #03: Backup name is not defined.',
+    04: u'Error #04: Bucket name is not defined.',
+    05: u'Error #05: Path for dump is not dir.',
+    06: u'Error #06: Path is not file.',
+}
+
 
 def load_config(func):
     '''
@@ -64,7 +75,7 @@ def load_config(func):
                         os.path.expanduser('~'),
                         '.zoort/config.json'))
             except IOError:
-                raise SystemExit('Error #00: Can\'t load config.')
+                raise SystemExit(_error_codes.get(00))
         config_data = json.load(config)
 
         global ADMIN_USER
@@ -130,7 +141,7 @@ def decrypt_file(path, password=None):
     if not password:
         password = PASSWORD_FILE
     if path and not os.path.isfile(path):
-        raise SystemExit('Error #06: Path is not file.')
+        raise SystemExit(_error_codes.get(06))
     query = 'openssl aes-128-cbc -d -salt -in {0} -out {1} -k {2}'
     with hide('output'):
         local(query.format(path, path + '.tar.gz', PASSWORD_FILE))
@@ -175,9 +186,9 @@ def backup_database(args):
     encrypt = args.get('--encrypt') or 'Y'
 
     if not database:
-        raise SystemExit('Error #01: Database is not define.')
+        raise SystemExit(_error_codes.get(01))
     if path and not os.path.isdir(path):
-        raise SystemExit('Error #05: Path for dump is not dir.')
+        raise SystemExit(_error_codes.get(06))
 
     query = 'mongodump -d {database} --host {host} '
     if username:
@@ -214,10 +225,9 @@ def backup_all(args):
         password = ADMIN_PASSWORD
 
     if not username or not password:
-        raise SystemExit('Error #02: User or password for '
-                         'admin is not defined.')
+        raise SystemExit(_error_codes.get(02))
     if path and not os.path.isdir(path):
-        raise SystemExit('Error #05: Path for dump is not dir.')
+        raise SystemExit(_error_codes.get(05))
 
     query = 'mongodump -u {username} -p {password} '
 
@@ -254,9 +264,9 @@ def delete_old_backups(bucket):
 def upload_backup(name_backup=None, bucket_name=None):
     global AWS_KEY_NAME
     if not name_backup:
-        raise SystemExit('Error #03: Backup name is not defined.')
+        raise SystemExit(_error_codes.get(03))
     if not bucket_name:
-        raise SystemExit('Error #04: Bucket name is not defined.')
+        raise SystemExit(_error_codes.get(04))
     print(blue('Uploading file to S3...'))
     # Connect to S3
     conn = boto.connect_s3(AWS_ACCESS_KEY, AWS_SECRET_KEY)
