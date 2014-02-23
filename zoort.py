@@ -188,7 +188,7 @@ def backup_database(args):
     if not database:
         raise SystemExit(_error_codes.get(01))
     if path and not os.path.isdir(path):
-        raise SystemExit(_error_codes.get(06))
+        raise SystemExit(_error_codes.get(05))
 
     query = 'mongodump -d {database} --host {host} '
     if username:
