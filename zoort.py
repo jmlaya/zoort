@@ -11,6 +11,7 @@ Usage:
   zoort backup <database> <user> <password> <host> [--path=<path>] [--upload_s3=<s3>] [--encrypt=<encrypt>]
   zoort backup_all <user_admin> <password_admin> [--path=<path>] [--upload_s3=<s3>] [--encrypt=<encrypt>]
   zoort decrypt <path>
+  zoort configure
   zoort --version
   zoort --help
 
@@ -36,6 +37,11 @@ from functools import wraps
 from fabric.api import local, hide
 from fabric.colors import blue
 
+try:
+    input = raw_input
+except NameError:
+    pass
+
 __version__ = '0.1.5'
 __author__ = 'Yohan Graterol'
 __license__ = 'MIT'
@@ -59,7 +65,8 @@ _error_codes = {
     04: u'Error #04: Bucket name is not defined.',
     05: u'Error #05: Path for dump is not dir.',
     06: u'Error #06: Path is not file.',
-    07: u'Error #07: Storage provider is wrong!'
+    07: u'Error #07: Storage provider is wrong!',
+    08: u'Error #08: Configure error!'
 }
 
 
@@ -151,6 +158,41 @@ def factory_uploader(type_uploader, *args, **kwargs):
         raise SystemExit(_error_codes.get('07'))
 
     return upload.upload()
+
+
+def configure():
+    import getpass
+    print('''
+    Zoort v-{0}
+    Please fill all fields for configure Zoort.
+    ''')
+    config_dict = dict()
+    config_dict['admin_user'] = input('MongoDB User Admin: ')
+    config_dict['admin_password'] = \
+        getpass.getpass('MongoDB Password Admin (Is hidden): ')
+    config_dict['aws_access_key'] = \
+        getpass.getpass('AWS Access Key (Is hidden): ')
+    config_dict['aws_secret_key'] = \
+        getpass.getpass('AWS Secret Key (Is hidden): ')
+
+    try:
+        if int(input('Do you want use Amazon Web Services S3? '
+                     ' (1 - Yes / 0 - No): ')):
+            config_dict['aws_bucket_name'] = input('AWS Bucket S3 name: ')
+        if int(input('Do you want use Amazon Web Services Glacier? '
+                     ' (1 - Yes / 0 - No): ')):
+            config_dict['aws_vault_name'] = input('AWS Vault Glacier name: ')
+        config_dict['aws_key_name'] = input('Key name for backups file: ')
+        config_dict['password_file'] = \
+            getpass.getpass('Password for encrypt with AES (Is hidden): ')
+        config_dict['delete_backup'] = \
+            int(input('Do you want delete old backups? '
+                      ' (1 - Yes / 0 - No): '))
+        if delete_backup:
+            config_dict['delete_weeks'] = \
+                input("When weeks before of backups do you want delete?")
+    except ValueError:
+        raise SystemExit(_error_codes.get(08))
 
 
 def load_config(func):
@@ -257,7 +299,7 @@ def optional_actions(encrypt, s3, path, compress_file):
                      normalize_path(path) + compress_file[0])
         file_to_upload = normalize_path(path) + compress_file[0]
     if s3 in yes:
-        factory_uploader("S3", name_backup=file_to_upload,
+        factory_uploader('S3', name_backup=file_to_upload,
                          bucket_name=AWS_BUCKET_NAME)
 
 
@@ -271,6 +313,8 @@ def main():
         backup_all(args)
     if args.get('decrypt'):
         decrypt_file(args.get('<path>'))
+    if args.get('configure'):
+        configure()
 
 
 def backup_database(args):
