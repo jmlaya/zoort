@@ -162,6 +162,8 @@ def load_config(func):
         global AWS_BUCKET_NAME
         global AWS_KEY_NAME
         global PASSWORD_FILE
+        global DELETE_BACKUP
+        global DELETE_WEEKS
         ADMIN_USER = config_data.get('admin_user')
         ADMIN_PASSWORD = config_data.get('admin_password')
         PASSWORD_FILE = config_data.get('password_file')
