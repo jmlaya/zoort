@@ -61,8 +61,8 @@ _error_codes = {
     06: u'Error #06: Path is not file.',
 }
 
-
-def factory_uploader(type_uploader):
+        
+def factory_uploader(type_uploader, *args, **kwargs):
 
     def get_diff_date(creation_date):
         '''
@@ -82,28 +82,39 @@ def factory_uploader(type_uploader):
 
     class AWSS3(object):
 
-        def upload(self, name_backup=None, bucket_name=None):
-            global AWS_KEY_NAME
-            if not name_backup:
+        def __init__(self, *args, **kwargs):
+            super(AWSS3, self).__init__()
+            self.__dict__.update(kwargs)
+
+            if not self.name_backup:
                 raise SystemExit(_error_codes.get(03))
-            if not bucket_name:
+            if not self.bucket_name:
                 raise SystemExit(_error_codes.get(04))
-            print(blue('Uploading file to S3...'))
+
             # Connect to S3
-            conn = boto.connect_s3(AWS_ACCESS_KEY, AWS_SECRET_KEY)
+            self.conn = boto.connect_s3(AWS_ACCESS_KEY, AWS_SECRET_KEY)
             # Get the bucket
-            bucket = conn.get_bucket(bucket_name)
-            # Delete all backups of two weeks before
-            self.delete_old_backups(bucket=bucket)
-            k = Key(bucket)
+            self.bucket = self.conn.get_bucket(self.bucket_name)
+
+        def upload(self):
+            global AWS_KEY_NAME
             if not AWS_KEY_NAME:
                 AWS_KEY_NAME = 'dump/'
+
+            print(blue('Uploading file to S3...'))
+            
+            # Delete all backups of two weeks before
+            self.delete(bucket=self.bucket)
+            
+            k = Key(self.bucket)
+            
             s3_key = (normalize_path(AWS_KEY_NAME) + 'week-' +
                       str(datetime.datetime.now().isocalendar()[1]) +
-                      '/' + name_backup.split('/')[-1])
-            print(blue('Uploading {0} to {1}.'.format(name_backup, s3_key)))
+                      '/' + self.name_backup.split('/')[-1])
+
+            print(blue('Uploading {0} to {1}.'.format(self.name_backup, s3_key)))
             k.key = s3_key
-            k.set_contents_from_filename(name_backup)
+            k.set_contents_from_filename(self.name_backup)
 
         def get_old_backup(self, bucket):
             ret = []
