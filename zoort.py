@@ -252,27 +252,31 @@ def delete_old_backups(bucket):
 
 
 def get_old_backups(bucket):
-    global DELETE_WEEKS
-    global AWS_KEY_NAME
     ret = []
-    now = int(time.time())
     dif = DELETE_WEEKS * 7 * 24 * 60
 
     for key in bucket.list():
-        #fecha de creación del archivo
-        creation_date = dateutil.parser.parse(key.creation_date)
-        format = '%m-%d-%Y %H:%M:%S'
-        #convierte el formato '%m-%d-%YT%H:%M:%S.000z' a '%m-%d-%Y %H:%M:%S'
-        cd_strf = creation_date.strftime(format)
-        #convierte el formato '%m-%d-%Y %H:%M:%S' a time.struct_time
-        cd_struct = time.strptime(cd_strf, format)
-        #convierte time.struct_time a segundos
-        idate = int(time.mktime(cd_struct))
-        
-        if (now - idate) >= dif:
+        if get_diff_date(key.creation_date) >= dif:
             ret.append(key)
 
     return ret
+
+
+def get_diff_date(creation_date):
+    '''
+    Return the difference between backup's date and now
+    '''
+    now = int(time.time())
+    format = '%m-%d-%Y %H:%M:%S'
+    date_parser = dateutil.parser.parse(creation_date)
+    # convert '%m-%d-%YT%H:%M:%S.000z' to '%m-%d-%Y %H:%M:%S' format
+    cd_strf = date_parser.strftime(format)
+    # convert '%m-%d-%Y %H:%M:%S' to time.struct_time
+    cd_struct = time.strptime(cd_strf, format)
+    # convert time.struct_time to seconds
+    cd_time = int(time.mktime(cd_struct))
+
+    return now - cd_time
 
 
 def upload_backup(name_backup=None, bucket_name=None):
