@@ -47,6 +47,25 @@ AWS_KEY_NAME = None
 PASSWORD_FILE = None
 
 
+def factory(type_uploader):
+    class AWSS3(object):
+
+        def upload():
+            pass
+
+    class AWSGlacier(object):
+
+        def upload():
+            pass
+    
+    uploaders = {'S3', AWSS3(),
+                 'Glacier', AWSGlacier()}
+
+    return uploaders.get(type_uploader)
+
+
+
+
 def load_config(func):
     '''
     @Decorator
