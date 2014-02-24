@@ -62,11 +62,67 @@ _error_codes = {
 }
 
 
-def factory(type_uploader):
+def factory_uploader(type_uploader):
+
+    def get_diff_date(creation_date):
+        '''
+        Return the difference between backup's date and now
+        '''
+        now = int(time.time())
+        format = '%m-%d-%Y %H:%M:%S'
+        date_parser = dateutil.parser.parse(creation_date)
+        # convert '%m-%d-%YT%H:%M:%S.000z' to '%m-%d-%Y %H:%M:%S' format
+        cd_strf = date_parser.strftime(format)
+        # convert '%m-%d-%Y %H:%M:%S' to time.struct_time
+        cd_struct = time.strptime(cd_strf, format)
+        # convert time.struct_time to seconds
+        cd_time = int(time.mktime(cd_struct))
+
+        return now - cd_time
+
     class AWSS3(object):
 
-        def upload():
-            pass
+        def upload(self, name_backup=None, bucket_name=None):
+            global AWS_KEY_NAME
+            if not name_backup:
+                raise SystemExit(_error_codes.get(03))
+            if not bucket_name:
+                raise SystemExit(_error_codes.get(04))
+            print(blue('Uploading file to S3...'))
+            # Connect to S3
+            conn = boto.connect_s3(AWS_ACCESS_KEY, AWS_SECRET_KEY)
+            # Get the bucket
+            bucket = conn.get_bucket(bucket_name)
+            # Delete all backups of two weeks before
+            self.delete_old_backups(bucket=bucket)
+            k = Key(bucket)
+            if not AWS_KEY_NAME:
+                AWS_KEY_NAME = 'dump/'
+            s3_key = (normalize_path(AWS_KEY_NAME) + 'week-' +
+                      str(datetime.datetime.now().isocalendar()[1]) +
+                      '/' + name_backup.split('/')[-1])
+            print(blue('Uploading {0} to {1}.'.format(name_backup, s3_key)))
+            k.key = s3_key
+            k.set_contents_from_filename(name_backup)
+
+        def get_old_backup(self, bucket):
+            ret = []
+            dif = DELETE_WEEKS * 7 * 24 * 60
+
+            for key in bucket.list():
+                if get_diff_date(key.creation_date) >= dif:
+                    ret.append(key)
+
+            return ret
+
+        def delete(self, bucket):
+            global DELETE_BACKUP
+
+            if not DELETE_BACKUP:
+                return
+
+            for key in self.get_old_backups(bucket):
+                key.delete()
 
     class AWSGlacier(object):
 
@@ -77,8 +133,6 @@ def factory(type_uploader):
                  'Glacier', AWSGlacier()}
 
     return uploaders.get(type_uploader)
-
-
 
 
 def load_config(func):
@@ -268,68 +322,6 @@ def backup_all(args):
     shutil.rmtree(normalize_path(path) + 'dump')
 
     optional_actions(encrypt, s3, path, compress_file)
-
-
-def delete_old_backups(bucket):
-    global DELETE_BACKUP
-
-    if not DELETE_BACKUP:
-        return
-
-    for key in get_old_backups(bucket):
-        key.delete()
-
-
-def get_old_backups(bucket):
-    ret = []
-    dif = DELETE_WEEKS * 7 * 24 * 60
-
-    for key in bucket.list():
-        if get_diff_date(key.creation_date) >= dif:
-            ret.append(key)
-
-    return ret
-
-
-def get_diff_date(creation_date):
-    '''
-    Return the difference between backup's date and now
-    '''
-    now = int(time.time())
-    format = '%m-%d-%Y %H:%M:%S'
-    date_parser = dateutil.parser.parse(creation_date)
-    # convert '%m-%d-%YT%H:%M:%S.000z' to '%m-%d-%Y %H:%M:%S' format
-    cd_strf = date_parser.strftime(format)
-    # convert '%m-%d-%Y %H:%M:%S' to time.struct_time
-    cd_struct = time.strptime(cd_strf, format)
-    # convert time.struct_time to seconds
-    cd_time = int(time.mktime(cd_struct))
-
-    return now - cd_time
-
-
-def upload_backup(name_backup=None, bucket_name=None):
-    global AWS_KEY_NAME
-    if not name_backup:
-        raise SystemExit(_error_codes.get(03))
-    if not bucket_name:
-        raise SystemExit(_error_codes.get(04))
-    print(blue('Uploading file to S3...'))
-    # Connect to S3
-    conn = boto.connect_s3(AWS_ACCESS_KEY, AWS_SECRET_KEY)
-    # Get the bucket
-    bucket = conn.get_bucket(bucket_name)
-    # Delete all backups of two weeks before
-    delete_old_backups(bucket=bucket)
-    k = Key(bucket)
-    if not AWS_KEY_NAME:
-        AWS_KEY_NAME = 'dump/'
-    s3_key = (normalize_path(AWS_KEY_NAME) + 'week-' +
-              str(datetime.datetime.now().isocalendar()[1]) +
-              '/' + name_backup.split('/')[-1])
-    print(blue('Uploading {0} to {1}.'.format(name_backup, s3_key)))
-    k.key = s3_key
-    k.set_contents_from_filename(name_backup)
 
 
 if __name__ == '__main__':
