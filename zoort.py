@@ -35,7 +35,7 @@ from boto.s3.key import Key
 from docopt import docopt
 from functools import wraps
 from fabric.api import local, hide
-from fabric.colors import blue
+from fabric.colors import blue, red
 
 try:
     input = raw_input
@@ -59,14 +59,15 @@ DELETE_WEEKS = None
 # Can be loaded from an import, but I put here
 # for simplicity.
 _error_codes = {
-    00: u'Error #00: Can\'t load config.',
-    01: u'Error #01: Database is not define.',
-    03: u'Error #03: Backup name is not defined.',
-    04: u'Error #04: Bucket name is not defined.',
-    05: u'Error #05: Path for dump is not dir.',
-    06: u'Error #06: Path is not file.',
-    07: u'Error #07: Storage provider is wrong!',
-    08: u'Error #08: Configure error!'
+    100: u'Error #00: Can\'t load config.',
+    101: u'Error #01: Database is not define.',
+    103: u'Error #03: Backup name is not defined.',
+    104: u'Error #04: Bucket name is not defined.',
+    105: u'Error #05: Path for dump is not dir.',
+    106: u'Error #06: Path is not file.',
+    107: u'Error #07: Storage provider is wrong!',
+    108: u'Error #08: Configure error!',
+    200: u'Warning #00: Field is requerid!',
 }
 
 
@@ -95,9 +96,9 @@ def factory_uploader(type_uploader, *args, **kwargs):
             self.__dict__.update(kwargs)
 
             if not self.name_backup:
-                raise SystemExit(_error_codes.get(03))
+                raise SystemExit(_error_codes.get(103))
             if not self.bucket_name:
-                raise SystemExit(_error_codes.get(04))
+                raise SystemExit(_error_codes.get(104))
 
             # Connect to S3
             self.conn = boto.connect_s3(AWS_ACCESS_KEY, AWS_SECRET_KEY)
@@ -155,44 +156,58 @@ def factory_uploader(type_uploader, *args, **kwargs):
     upload = uploaders.get(type_uploader)
 
     if not upload:
-        raise SystemExit(_error_codes.get('07'))
+        raise SystemExit(_error_codes.get(107))
 
     return upload.upload()
 
 
-def configure():
+def get_input(msg, is_password=False):
     import getpass
+    if is_password:
+        inp = getpass.getpass
+    else:
+        inp = input
+    in_user = inp(msg)
+    while not in_user:
+        print(red(_error_codes.get(200)))
+        in_user = inp(msg)
+    return in_user
+
+
+def configure():
     print('''
     Zoort v-{0}
     Please fill all fields for configure Zoort.
     ''')
     config_dict = dict()
-    config_dict['admin_user'] = input('MongoDB User Admin: ')
+    config_dict['admin_user'] = get_input('MongoDB User Admin: ')
     config_dict['admin_password'] = \
-        getpass.getpass('MongoDB Password Admin (Is hidden): ')
+        get_input('MongoDB Password Admin (Is hidden): ', True)
     config_dict['aws_access_key'] = \
-        getpass.getpass('AWS Access Key (Is hidden): ')
+        get_input('AWS Access Key (Is hidden): ', True)
     config_dict['aws_secret_key'] = \
-        getpass.getpass('AWS Secret Key (Is hidden): ')
+        get_input('AWS Secret Key (Is hidden): ', True)
 
     try:
-        if int(input('Do you want use Amazon Web Services S3? '
-                     ' (1 - Yes / 0 - No): ')):
-            config_dict['aws_bucket_name'] = input('AWS Bucket S3 name: ')
-        if int(input('Do you want use Amazon Web Services Glacier? '
-                     ' (1 - Yes / 0 - No): ')):
-            config_dict['aws_vault_name'] = input('AWS Vault Glacier name: ')
-        config_dict['aws_key_name'] = input('Key name for backups file: ')
+        if int(get_input('Do you want use Amazon Web Services S3? '
+                         ' (1 - Yes / 0 - No): ')):
+            config_dict['aws_bucket_name'] = get_input('AWS Bucket S3 name: ')
+        if int(get_input('Do you want use Amazon Web Services Glacier? '
+                         ' (1 - Yes / 0 - No): ')):
+            config_dict['aws_vault_name'] = \
+                get_input('AWS Vault Glacier name: ')
+        config_dict['aws_key_name'] = get_input('Key name for backups file: ')
         config_dict['password_file'] = \
-            getpass.getpass('Password for encrypt with AES (Is hidden): ')
+            get_input('Password for encrypt with AES (Is hidden): ', True)
         config_dict['delete_backup'] = \
-            int(input('Do you want delete old backups? '
-                      ' (1 - Yes / 0 - No): '))
-        if delete_backup:
+            int(get_input('Do you want delete old backups? '
+                          ' (1 - Yes / 0 - No): '))
+        if config_dict['delete_backup']:
             config_dict['delete_weeks'] = \
-                input("When weeks before of backups do you want delete?")
+                get_input('When weeks before of backups do you want delete? '
+                          '(Number please)')
     except ValueError:
-        raise SystemExit(_error_codes.get(08))
+        raise SystemExit(_error_codes.get(108))
 
 
 def load_config(func):
@@ -212,7 +227,7 @@ def load_config(func):
                         os.path.expanduser('~'),
                         '.zoort/config.json'))
             except IOError:
-                raise SystemExit(_error_codes.get(00))
+                raise SystemExit(_error_codes.get(100))
         config_data = json.load(config)
 
         global ADMIN_USER
@@ -252,7 +267,7 @@ def compress_folder_dump(path):
     '''
     import tarfile
     if not path or not os.path.isdir(path):
-        raise SystemExit('Error #05: Path for dump is not dir.')
+        raise SystemExit(_error_codes.get(105))
     name_out_file = ('dump-' +
                      datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S'))
     tar = tarfile.open(name_out_file + '.tar.gz', 'w:gz')
@@ -330,9 +345,9 @@ def backup_database(args):
     encrypt = args.get('--encrypt') or 'Y'
 
     if not database:
-        raise SystemExit(_error_codes.get(01))
+        raise SystemExit(_error_codes.get(101))
     if path and not os.path.isdir(path):
-        raise SystemExit(_error_codes.get(05))
+        raise SystemExit(_error_codes.get(105))
 
     query = 'mongodump -d {database} --host {host} '
     if username:
@@ -369,9 +384,9 @@ def backup_all(args):
         password = ADMIN_PASSWORD
 
     if not username or not password:
-        raise SystemExit(_error_codes.get(02))
+        raise SystemExit(_error_codes.get(102))
     if path and not os.path.isdir(path):
-        raise SystemExit(_error_codes.get(05))
+        raise SystemExit(_error_codes.get(105))
 
     query = 'mongodump -u {username} -p {password} '
 
