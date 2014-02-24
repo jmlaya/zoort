@@ -61,7 +61,7 @@ _error_codes = {
     06: u'Error #06: Path is not file.',
 }
 
-        
+
 def factory_uploader(type_uploader, *args, **kwargs):
 
     def get_diff_date(creation_date):
@@ -102,21 +102,22 @@ def factory_uploader(type_uploader, *args, **kwargs):
                 AWS_KEY_NAME = 'dump/'
 
             print(blue('Uploading file to S3...'))
-            
+
             # Delete all backups of two weeks before
-            self.delete(bucket=self.bucket)
-            
+            self._delete(bucket=self.bucket)
+
             k = Key(self.bucket)
-            
+
             s3_key = (normalize_path(AWS_KEY_NAME) + 'week-' +
                       str(datetime.datetime.now().isocalendar()[1]) +
                       '/' + self.name_backup.split('/')[-1])
 
-            print(blue('Uploading {0} to {1}.'.format(self.name_backup, s3_key)))
+            print(blue('Uploading {0} to {1}.'.format(self.name_backup,
+                                                      s3_key)))
             k.key = s3_key
             k.set_contents_from_filename(self.name_backup)
 
-        def get_old_backup(self, bucket):
+        def _get_old_backup(self, bucket):
             ret = []
             dif = DELETE_WEEKS * 7 * 24 * 60
 
@@ -126,24 +127,26 @@ def factory_uploader(type_uploader, *args, **kwargs):
 
             return ret
 
-        def delete(self, bucket):
+        def _delete(self, bucket):
             global DELETE_BACKUP
 
             if not DELETE_BACKUP:
                 return
 
-            for key in self.get_old_backups(bucket):
+            for key in self._get_old_backups(bucket):
                 key.delete()
 
     class AWSGlacier(object):
 
         def upload():
             pass
-    
-    uploaders = {'S3', AWSS3(),
-                 'Glacier', AWSGlacier()}
 
-    return uploaders.get(type_uploader)
+    uploaders = {'S3', AWSS3(*args, **kwargs),
+                 'Glacier', AWSGlacier(*args, **kwargs)}
+
+    upload = uploaders.get(type_uploader)
+
+    return upload.upload()
 
 
 def load_config(func):
@@ -250,7 +253,8 @@ def optional_actions(encrypt, s3, path, compress_file):
                      normalize_path(path) + compress_file[0])
         file_to_upload = normalize_path(path) + compress_file[0]
     if s3 in yes:
-        upload_backup(file_to_upload, AWS_BUCKET_NAME)
+        factory_uploader("S3", name_backup=file_to_upload,
+                         bucket_name=AWS_BUCKET_NAME)
 
 
 @load_config
