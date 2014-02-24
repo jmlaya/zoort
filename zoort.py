@@ -35,7 +35,7 @@ from boto.s3.key import Key
 from docopt import docopt
 from functools import wraps
 from fabric.api import local, hide
-from fabric.colors import blue, red
+from fabric.colors import blue, red, green
 
 try:
     input = raw_input
@@ -67,7 +67,10 @@ _error_codes = {
     106: u'Error #06: Path is not file.',
     107: u'Error #07: Storage provider is wrong!',
     108: u'Error #08: Configure error!',
+    109: u'Error #09: Oh, you are not root user! :(',
     200: u'Warning #00: Field is requerid!',
+    201: u'Warning #01: Field Type is wrong!',
+    300: u'Success #00: Zoort is configure :)'
 }
 
 
@@ -161,16 +164,26 @@ def factory_uploader(type_uploader, *args, **kwargs):
     return upload.upload()
 
 
-def get_input(msg, is_password=False):
+def transform_type(value, typ=None):
+    if not typ:
+        return value
+    try:
+        return typ(value)
+    except ValueError:
+        print(red(_error_codes.get(201)))
+        return
+
+
+def get_input(msg, is_password=False, verify_type=None):
     import getpass
     if is_password:
         inp = getpass.getpass
     else:
         inp = input
-    in_user = inp(msg)
+    in_user = transform_type(inp(msg), verify_type)
     while not in_user:
         print(red(_error_codes.get(200)))
-        in_user = inp(msg)
+        in_user = transform_type(inp(msg), verify_type)
     return in_user
 
 
@@ -178,36 +191,49 @@ def configure():
     print('''
     Zoort v-{0}
     Please fill all fields for configure Zoort.
-    ''')
+    '''.format(__version__))
+    # Check if is root user
+    if os.geteuid() != 0:
+        raise SystemExit(_error_codes.get(109))
     config_dict = dict()
     config_dict['admin_user'] = get_input('MongoDB User Admin: ')
     config_dict['admin_password'] = \
         get_input('MongoDB Password Admin (Is hidden): ', True)
-    config_dict['aws_access_key'] = \
+    # Define dict to aws key
+    config_dict['aws'] = dict()
+
+    # AWS Variables
+    config_dict['aws']['aws_access_key'] = \
         get_input('AWS Access Key (Is hidden): ', True)
-    config_dict['aws_secret_key'] = \
+    config_dict['aws']['aws_secret_key'] = \
         get_input('AWS Secret Key (Is hidden): ', True)
 
     try:
         if int(get_input('Do you want use Amazon Web Services S3? '
-                         ' (1 - Yes / 0 - No): ')):
-            config_dict['aws_bucket_name'] = get_input('AWS Bucket S3 name: ')
+                         ' (1 - Yes / 0 - No): ', verify_type=int)):
+            config_dict['aws']['aws_bucket_name'] = \
+                get_input('AWS Bucket S3 name: ')
         if int(get_input('Do you want use Amazon Web Services Glacier? '
-                         ' (1 - Yes / 0 - No): ')):
-            config_dict['aws_vault_name'] = \
+                         ' (1 - Yes / 0 - No): ', verify_type=int)):
+            config_dict['aws']['aws_vault_name'] = \
                 get_input('AWS Vault Glacier name: ')
-        config_dict['aws_key_name'] = get_input('Key name for backups file: ')
-        config_dict['password_file'] = \
+        config_dict['aws']['aws_key_name'] = \
+            get_input('Key name for backups file: ')
+        config_dict['aws']['password_file'] = \
             get_input('Password for encrypt with AES (Is hidden): ', True)
         config_dict['delete_backup'] = \
             int(get_input('Do you want delete old backups? '
-                          ' (1 - Yes / 0 - No): '))
+                          ' (1 - Yes / 0 - No): ', verify_type=int))
         if config_dict['delete_backup']:
             config_dict['delete_weeks'] = \
                 get_input('When weeks before of backups do you want delete? '
-                          '(Number please)')
+                          '(Number please) ', verify_type=int)
     except ValueError:
         raise SystemExit(_error_codes.get(108))
+
+    with open('/etc/zoort/config.json', 'w') as config:
+        json.dump(config_dict, config)
+    print(green(_error_codes.get(300)))
 
 
 def load_config(func):
@@ -228,26 +254,28 @@ def load_config(func):
                         '.zoort/config.json'))
             except IOError:
                 raise SystemExit(_error_codes.get(100))
-        config_data = json.load(config)
-
-        global ADMIN_USER
-        global ADMIN_PASSWORD
-        global AWS_ACCESS_KEY
-        global AWS_SECRET_KEY
-        global AWS_BUCKET_NAME
-        global AWS_KEY_NAME
-        global PASSWORD_FILE
-        global DELETE_BACKUP
-        global DELETE_WEEKS
-        ADMIN_USER = config_data.get('admin_user')
-        ADMIN_PASSWORD = config_data.get('admin_password')
-        PASSWORD_FILE = config_data.get('password_file')
-        AWS_ACCESS_KEY = config_data.get('aws').get('aws_access_key')
-        AWS_SECRET_KEY = config_data.get('aws').get('aws_secret_key')
-        AWS_BUCKET_NAME = config_data.get('aws').get('aws_bucket_name')
-        AWS_KEY_NAME = config_data.get('aws').get('aws_key_name')
-        DELETE_BACKUP = config_data.get('delete_backup')
-        DELETE_WEEKS = config_data.get('delete_weeks')
+        try:
+            config_data = json.load(config)
+            global ADMIN_USER
+            global ADMIN_PASSWORD
+            global AWS_ACCESS_KEY
+            global AWS_SECRET_KEY
+            global AWS_BUCKET_NAME
+            global AWS_KEY_NAME
+            global PASSWORD_FILE
+            global DELETE_BACKUP
+            global DELETE_WEEKS
+            ADMIN_USER = config_data.get('admin_user')
+            ADMIN_PASSWORD = config_data.get('admin_password')
+            PASSWORD_FILE = config_data.get('password_file')
+            AWS_ACCESS_KEY = config_data.get('aws').get('aws_access_key')
+            AWS_SECRET_KEY = config_data.get('aws').get('aws_secret_key')
+            AWS_BUCKET_NAME = config_data.get('aws').get('aws_bucket_name')
+            AWS_KEY_NAME = config_data.get('aws').get('aws_key_name')
+            DELETE_BACKUP = config_data.get('delete_backup')
+            DELETE_WEEKS = config_data.get('delete_weeks')
+        except ValueError:
+            pass
         return func(*args, **kwargs)
     return wrapper
 
