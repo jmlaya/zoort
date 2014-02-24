@@ -59,6 +59,7 @@ _error_codes = {
     04: u'Error #04: Bucket name is not defined.',
     05: u'Error #05: Path for dump is not dir.',
     06: u'Error #06: Path is not file.',
+    07: u'Error #07: Storage provider is wrong!'
 }
 
 
@@ -145,6 +146,9 @@ def factory_uploader(type_uploader, *args, **kwargs):
                  'Glacier', AWSGlacier(*args, **kwargs)}
 
     upload = uploaders.get(type_uploader)
+
+    if not upload:
+        raise SystemExit(_error_codes.get('07'))
 
     return upload.upload()
 
