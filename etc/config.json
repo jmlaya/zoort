@@ -7,5 +7,7 @@
         "aws_secret_key": "<aws_secret_key>",
         "aws_bucket_name": "<aws_bucket_name>",
         "aws_key_name": "<aws_key_name>"
-    }
+    },
+    "delete_backup": 1,
+    "delete_weeks": 2
 }
