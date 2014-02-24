@@ -26,6 +26,8 @@ from __future__ import unicode_literals, print_function
 import json
 import os
 import datetime
+import time
+import dateutil.parser
 import boto
 import shutil
 from boto.s3.key import Key
@@ -45,6 +47,8 @@ AWS_SECRET_KEY = None
 AWS_BUCKET_NAME = None
 AWS_KEY_NAME = None
 PASSWORD_FILE = None
+DELETE_BACKUP = None
+DELETE_WEEKS = None
 
 # Can be loaded from an import, but I put here
 # for simplicity.
@@ -92,6 +96,8 @@ def load_config(func):
         AWS_SECRET_KEY = config_data.get('aws').get('aws_secret_key')
         AWS_BUCKET_NAME = config_data.get('aws').get('aws_bucket_name')
         AWS_KEY_NAME = config_data.get('aws').get('aws_key_name')
+        DELETE_BACKUP = config_data.get('delete_backup')
+        DELETE_WEEKS = config_data.get('delete_weeks')
         return func(*args, **kwargs)
     return wrapper
 
@@ -246,19 +252,41 @@ def backup_all(args):
 
 
 def delete_old_backups(bucket):
-    # Change in this method. Issue: #1 (LisandroSeijo)
-    thisweek = datetime.datetime.now().isocalendar()[1]
-    if thisweek < 3:
-        """
-        Si dio 1: 52 + 1 = 53 (borra la semana 51)
-        Si dio 2: 52 + 2 = 54 (borra la semana 52)
-        """
-        thisweek += 52
+    global DELETE_BACKUP
 
-    week = str(thisweek - 2)
-    for key in bucket.list(prefix=normalize_path(AWS_KEY_NAME) +
-                           'week-' + week):
+    if not DELETE_BACKUP:
+        return
+
+    for key in get_old_backups(bucket):
         key.delete()
+
+
+def get_old_backups(bucket):
+    ret = []
+    dif = DELETE_WEEKS * 7 * 24 * 60
+
+    for key in bucket.list():
+        if get_diff_date(key.creation_date) >= dif:
+            ret.append(key)
+
+    return ret
+
+
+def get_diff_date(creation_date):
+    '''
+    Return the difference between backup's date and now
+    '''
+    now = int(time.time())
+    format = '%m-%d-%Y %H:%M:%S'
+    date_parser = dateutil.parser.parse(creation_date)
+    # convert '%m-%d-%YT%H:%M:%S.000z' to '%m-%d-%Y %H:%M:%S' format
+    cd_strf = date_parser.strftime(format)
+    # convert '%m-%d-%Y %H:%M:%S' to time.struct_time
+    cd_struct = time.strptime(cd_strf, format)
+    # convert time.struct_time to seconds
+    cd_time = int(time.mktime(cd_struct))
+
+    return now - cd_time
 
 
 def upload_backup(name_backup=None, bucket_name=None):
