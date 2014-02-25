@@ -403,7 +403,9 @@ def optional_actions(encrypt, path, compress_file, **kwargs):
 
     if kwargs.get('glacier') in yes:
         factory_uploader('Glacier', name_backup=file_to_upload,
-                         vault_name=AWS_VAULT_NAME, path='/home/yograterol/.zoort.db')
+                         vault_name=AWS_VAULT_NAME,
+                         path=os.path.join(os.path.expanduser('~'),
+                                           '.zoort.db'))
 
 
 @load_config
