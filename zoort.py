@@ -31,11 +31,15 @@ import time
 import dateutil.parser
 import boto
 import shutil
+import sqlite3
 from boto.s3.key import Key
 from docopt import docopt
 from functools import wraps
 from fabric.api import local, hide
 from fabric.colors import blue, red, green
+from boto.glacier.layer1 import Layer1
+from boto.glacier.vault import Vault
+from boto.glacier.concurrent import ConcurrentUploader
 
 try:
     input = raw_input
@@ -51,6 +55,7 @@ ADMIN_PASSWORD = None
 AWS_ACCESS_KEY = None
 AWS_SECRET_KEY = None
 AWS_BUCKET_NAME = None
+AWS_VAULT_NAME = None
 AWS_KEY_NAME = None
 PASSWORD_FILE = None
 DELETE_BACKUP = None
@@ -68,6 +73,8 @@ _error_codes = {
     107: u'Error #07: Storage provider is wrong!',
     108: u'Error #08: Configure error!',
     109: u'Error #09: Oh, you are not root user! :(',
+    110: u'Error #10: Path for sqlite database is not defined!.',
+    111: u'Error #11: Backup path is invalid.',
     200: u'Warning #00: Field is requerid!',
     201: u'Warning #01: Field Type is wrong!',
     300: u'Success #00: Zoort is configure :)'
@@ -150,7 +157,47 @@ def factory_uploader(type_uploader, *args, **kwargs):
 
     class AWSGlacier(object):
 
-        def upload():
+        def __init__(self, *args, **kwargs):
+            super(AWSGlacier, self).__init__()
+            self.__dict__.update(kwargs)
+            self.path = kwargs.get('path', None)
+            self.file_name = kwargs.get('file_name', None)
+            self.glacier_layer1 = Layer1(aws_access_key_id=AWS_ACCESS_KEY,
+                                         aws_secret_access_key=AWS_ACCESS_KEY)
+            self.uploader = ConcurrentUploader(self.glacier_layer1,
+                                               AWS_VAULT_NAME,
+                                               32 * 1024 * 1024)
+
+            self.connect_db()
+
+        def connect_db(self):
+            if not self.path:
+                raise SystemExit(110)
+            self.conn = sqlite3.connect(self.path)
+            self.cursor = self.conn.cursor()
+            self.verify_table()
+
+        def add_archive_id(self, archiveID):
+            query = ('INSERT INTO file (date_upload, archiveID) '
+                     'VALUE({0}, {1});')
+            self.cursor.execute(query.format(str(time.time()), archiveID))
+
+        def verify_table(self):
+            try:
+                self.cursor.execute('SELECT * FROM file;')
+            except sqlite3.OperationalError:
+                self.cursor.execute('''CREATE TABLE file
+                    (date_upload DATETIME NOT NULL ,
+                    archiveID VARCHAR NOT NULL  UNIQUE )
+                    ''')
+                
+        def upload(self):
+            if not self.file_name:
+                raise SystemExit(111)
+            archive_id = self.uploader.upload(self.file_name, self.file_name)
+            self.add_archive_id(archive_id)
+
+        def delete(self):
             pass
 
     uploaders = {'S3', AWSS3(*args, **kwargs),
@@ -261,6 +308,7 @@ def load_config(func):
             global AWS_ACCESS_KEY
             global AWS_SECRET_KEY
             global AWS_BUCKET_NAME
+            global AWS_VAULT_NAME
             global AWS_KEY_NAME
             global PASSWORD_FILE
             global DELETE_BACKUP
@@ -271,6 +319,7 @@ def load_config(func):
             AWS_ACCESS_KEY = config_data.get('aws').get('aws_access_key')
             AWS_SECRET_KEY = config_data.get('aws').get('aws_secret_key')
             AWS_BUCKET_NAME = config_data.get('aws').get('aws_bucket_name')
+            AWS_VAULT_NAME = config_data.get('aws').get('aws_vault_name')
             AWS_KEY_NAME = config_data.get('aws').get('aws_key_name')
             DELETE_BACKUP = config_data.get('delete_backup')
             DELETE_WEEKS = config_data.get('delete_weeks')
