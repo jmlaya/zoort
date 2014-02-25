@@ -6,10 +6,10 @@
 '''zoort
 
 Usage:
-  zoort backup <database> [--path=<path>] [--upload_s3=<s3>] [--encrypt=<encrypt>]
-  zoort backup <database> <user> <password> [--path=<path>] [--upload_s3=<s3>] [--encrypt=<encrypt>]
-  zoort backup <database> <user> <password> <host> [--path=<path>] [--upload_s3=<s3>] [--encrypt=<encrypt>]
-  zoort backup_all <user_admin> <password_admin> [--path=<path>] [--upload_s3=<s3>] [--encrypt=<encrypt>]
+  zoort backup <database> [--path=<path>] [--upload_s3=<s3>] [--upload_glacier=<glacier>] [--encrypt=<encrypt>]
+  zoort backup <database> <user> <password> [--path=<path>] [--upload_s3=<s3>] [--upload_glacier=<glacier>] [--encrypt=<encrypt>]
+  zoort backup <database> <user> <password> <host> [--path=<path>] [--upload_s3=<s3>] [--upload_glacier=<glacier>] [--encrypt=<encrypt>]
+  zoort backup_all <user_admin> <password_admin> [--path=<path>] [--upload_s3=<s3>] [--upload_glacier=<glacier>] [--encrypt=<encrypt>]
   zoort decrypt <path>
   zoort configure
   zoort --version
@@ -37,9 +37,6 @@ from docopt import docopt
 from functools import wraps
 from fabric.api import local, hide
 from fabric.colors import blue, red, green
-from boto.glacier.layer1 import Layer1
-from boto.glacier.vault import Vault
-from boto.glacier.concurrent import ConcurrentUploader
 
 try:
     input = raw_input
@@ -161,12 +158,11 @@ def factory_uploader(type_uploader, *args, **kwargs):
             super(AWSGlacier, self).__init__()
             self.__dict__.update(kwargs)
             self.path = kwargs.get('path', None)
-            self.file_name = kwargs.get('file_name', None)
-            self.glacier_layer1 = Layer1(aws_access_key_id=AWS_ACCESS_KEY,
-                                         aws_secret_access_key=AWS_ACCESS_KEY)
-            self.uploader = ConcurrentUploader(self.glacier_layer1,
-                                               AWS_VAULT_NAME,
-                                               32 * 1024 * 1024)
+            self.name_backup = kwargs.get('name_backup', None)
+            self.glacier_connection = \
+                boto.connect_glacier(aws_access_key_id=AWS_ACCESS_KEY,
+                                     aws_secret_access_key=AWS_SECRET_KEY)
+            self.vault = self.glacier_connection.get_vault(AWS_VAULT_NAME)
 
             self.connect_db()
 
@@ -178,8 +174,8 @@ def factory_uploader(type_uploader, *args, **kwargs):
             self.verify_table()
 
         def add_archive_id(self, archiveID):
-            query = ('INSERT INTO file (date_upload, archiveID) '
-                     'VALUE({0}, {1});')
+            query = ('INSERT INTO "main"."file" ("date_upload","archiveID") '
+                     'VALUES(\'{0}\', \'{1})\';')
             self.cursor.execute(query.format(str(time.time()), archiveID))
 
         def verify_table(self):
@@ -190,20 +186,24 @@ def factory_uploader(type_uploader, *args, **kwargs):
                     (date_upload DATETIME NOT NULL ,
                     archiveID VARCHAR NOT NULL  UNIQUE )
                     ''')
-                
+
         def upload(self):
-            if not self.file_name:
+            if not self.name_backup:
                 raise SystemExit(111)
-            archive_id = self.uploader.upload(self.file_name, self.file_name)
+
+            print(green('Uploading file to Glacier...'))
+            archive_id = self.vault.concurrent_create_archive_from_file(
+                self.name_backup, self.name_backup)
+
             self.add_archive_id(archive_id)
 
         def delete(self):
             pass
 
-    uploaders = {'S3', AWSS3(*args, **kwargs),
-                 'Glacier', AWSGlacier(*args, **kwargs)}
+    uploaders = {'S3': AWSS3,
+                 'Glacier': AWSGlacier}
 
-    upload = uploaders.get(type_uploader)
+    upload = uploaders.get(type_uploader)(*args, **kwargs)
 
     if not upload:
         raise SystemExit(_error_codes.get(107))
@@ -380,7 +380,7 @@ def decrypt_file(path, password=None):
         local(query.format(path, path + '.tar.gz', PASSWORD_FILE))
 
 
-def optional_actions(encrypt, s3, path, compress_file):
+def optional_actions(encrypt, path, compress_file, **kwargs):
     '''
     Optional actions about of AWS S3 and encrypt file.
     '''
@@ -390,9 +390,14 @@ def optional_actions(encrypt, s3, path, compress_file):
         encrypt_file(normalize_path(path) + compress_file[1],
                      normalize_path(path) + compress_file[0])
         file_to_upload = normalize_path(path) + compress_file[0]
-    if s3 in yes:
+
+    if kwargs.get('s3') in yes:
         factory_uploader('S3', name_backup=file_to_upload,
                          bucket_name=AWS_BUCKET_NAME)
+
+    if kwargs.get('glacier') in yes:
+        factory_uploader('Glacier', name_backup=file_to_upload,
+                         vault_name=AWS_VAULT_NAME, path='/home/yograterol/.zoort.db')
 
 
 @load_config
@@ -419,6 +424,7 @@ def backup_database(args):
     host = args.get('<host>') or '127.0.0.1'
     path = args.get('[--path]') or os.getcwd()
     s3 = args.get('--upload_s3')
+    glacier = args.get('--upload_glacier')
     encrypt = args.get('--encrypt') or 'Y'
 
     if not database:
@@ -443,7 +449,7 @@ def backup_database(args):
 
     shutil.rmtree(normalize_path(path) + 'dump')
 
-    optional_actions(encrypt, s3, path, compress_file)
+    optional_actions(encrypt, path, compress_file, s3=s3, glacier=glacier)
 
 
 def backup_all(args):
@@ -454,6 +460,7 @@ def backup_all(args):
     password = args.get('<password_admin>')
     path = args.get('[--path]') or os.getcwd()
     s3 = args.get('--upload_s3')
+    glacier = args.get('--upload_glacier')
     encrypt = args.get('--encrypt') or 'Y'
 
     if (ADMIN_USER and ADMIN_PASSWORD) and not username or not password:
@@ -478,7 +485,7 @@ def backup_all(args):
 
     shutil.rmtree(normalize_path(path) + 'dump')
 
-    optional_actions(encrypt, s3, path, compress_file)
+    optional_actions(encrypt, path, compress_file, s3=s3, glacier=glacier)
 
 
 if __name__ == '__main__':
