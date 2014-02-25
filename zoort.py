@@ -173,9 +173,14 @@ def factory_uploader(type_uploader, *args, **kwargs):
             self.cursor = self.conn.cursor()
             self.verify_table()
 
+        def commit(self):
+            print(green("Saving data.."))
+            self.conn.commit()
+            self.conn.close()
+
         def add_archive_id(self, archiveID):
-            query = ('INSERT INTO "main"."file" ("date_upload","archiveID") '
-                     'VALUES(\'{0}\', \'{1})\';')
+            query = ('INSERT INTO "file" ("date_upload","archiveID") '
+                     'VALUES("{0}", "{1}");')
             self.cursor.execute(query.format(str(time.time()), archiveID))
 
         def verify_table(self):
@@ -192,10 +197,11 @@ def factory_uploader(type_uploader, *args, **kwargs):
                 raise SystemExit(111)
 
             print(green('Uploading file to Glacier...'))
-            archive_id = self.vault.concurrent_create_archive_from_file(
-                self.name_backup, self.name_backup)
-
+            archive_id = self.vault.upload_archive(self.name_backup)
+            retrieve_job = self.vault.retrieve_archive(archive_id)
             self.add_archive_id(archive_id)
+
+            self.commit()
 
         def delete(self):
             pass
