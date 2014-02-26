@@ -443,13 +443,14 @@ def optional_actions(encrypt, path, compress_file, **kwargs):
 
     if kwargs.get('s3') in yes:
         factory_uploader('S3', name_backup=file_to_upload,
-                         bucket_name=AWS_BUCKET_NAME)
+                         bucket_name=AWS_BUCKET_NAME, action='upload')
 
     if kwargs.get('glacier') in yes:
         factory_uploader('Glacier', name_backup=file_to_upload,
                          vault_name=AWS_VAULT_NAME,
                          path=os.path.join(os.path.expanduser('~'),
-                                           '.zoort.db'))
+                                           '.zoort.db'),
+                         action='upload')
 
 
 @load_config
