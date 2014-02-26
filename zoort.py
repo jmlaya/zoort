@@ -216,16 +216,6 @@ def factory_uploader(type_uploader, *args, **kwargs):
             return self.session.query(
                 self.File).filter(self.File.date_upload<=time_old)
 
-        def verify_table(self):
-            try:
-                self.cursor.execute('SELECT * FROM file;')
-            except sqlite3.OperationalError:
-                self.cursor.execute('''CREATE TABLE file
-                    (date_upload DATETIME NOT NULL ,
-                    archiveID VARCHAR NOT NULL  UNIQUE,
-                    name_file VARCHAR NOT NULL  UNIQUE )
-                    ''')
-
         def upload(self):
             if not self.name_backup:
                 raise SystemExit(111)
