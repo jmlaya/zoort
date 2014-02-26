@@ -31,7 +31,6 @@ import time
 import dateutil.parser
 import boto
 import shutil
-import sqlite3
 from boto.s3.key import Key
 from docopt import docopt
 from functools import wraps
@@ -48,7 +47,7 @@ try:
 except NameError:
     pass
 
-__version__ = '0.1.5'
+__version__ = '0.1.6'
 __author__ = 'Yohan Graterol'
 __license__ = 'MIT'
 
