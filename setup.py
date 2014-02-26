@@ -33,7 +33,8 @@ setup(
     author='Yohan Graterol',
     author_email='y@mejorando.la | yograterol@fedoraproject.org',
     url='https://github.com/yograterol/zoort',
-    install_requires=['docopt', 'fabric', 'boto', 'requests'],
+    install_requires=['docopt', 'fabric', 'boto', 'requests',
+                      'python-dateutil', 'sqlalchemy'],
     license=read("LICENSE"),
     zip_safe=False,
     keywords='zoort, mongodb, backups',
@@ -55,5 +56,6 @@ setup(
             "zoort = zoort:main"
         ]
     },
+    include_package_data=True,
     data_files=[('/etc/zoort', ['etc/config.json', ])]
 )

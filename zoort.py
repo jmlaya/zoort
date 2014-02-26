@@ -9,7 +9,7 @@ Usage:
   zoort backup <database> [--path=<path>] [--upload_s3=<s3>] [--upload_glacier=<glacier>] [--encrypt=<encrypt>]
   zoort backup <database> <user> <password> [--path=<path>] [--upload_s3=<s3>] [--upload_glacier=<glacier>] [--encrypt=<encrypt>]
   zoort backup <database> <user> <password> <host> [--path=<path>] [--upload_s3=<s3>] [--upload_glacier=<glacier>] [--encrypt=<encrypt>]
-  zoort backup_all <user_admin> <password_admin> [--path=<path>] [--upload_s3=<s3>] [--upload_glacier=<glacier>] [--encrypt=<encrypt>]
+  zoort backup_all [--auth=<auth>] [--path=<path>] [--upload_s3=<s3>] [--upload_glacier=<glacier>] [--encrypt=<encrypt>]
   zoort decrypt <path>
   zoort configure
   zoort --version
@@ -18,6 +18,7 @@ Usage:
 Options:
   -h --help           Show this screen.
   --version           Show version.
+  --auth=<auth>       Only if it is necessary auth for dump.
   --path=<path>       Path target for the dump. [default: pwd].
   --upload_s3=<s3>    Upload to AWS S3 storage. [default: N].
   --encrypt=<encrypt> Encrypt output file dump before upload to S3. [default: Y]
@@ -495,24 +496,24 @@ def backup_all(args):
     '''
     Backup all databases with access user.
     '''
-    username = args.get('<user_admin>')
-    password = args.get('<password_admin>')
-    path = args.get('[--path]') or os.getcwd()
+    username = None
+    password = None
+    auth = args.get('--auth')
+    path = args.get('--path') or os.getcwd()
     s3 = args.get('--upload_s3')
     glacier = args.get('--upload_glacier')
     encrypt = args.get('--encrypt') or 'Y'
 
-    if (ADMIN_USER and ADMIN_PASSWORD) and not username or not password:
+    if (ADMIN_USER and ADMIN_PASSWORD):
         username = ADMIN_USER
         password = ADMIN_PASSWORD
-
-    if not username or not password:
-        raise SystemExit(_error_codes.get(102))
     if path and not os.path.isdir(path):
         raise SystemExit(_error_codes.get(105))
 
-    query = 'mongodump -u {username} -p {password} '
-
+    if auth:
+        query = 'mongodump -u {username} -p {password} '
+    else:
+        query = 'mongodump '
     if path:
         query += '-o {path}/dump'
 
