@@ -216,12 +216,19 @@ def factory_uploader(type_uploader, *args, **kwargs):
             return self.session.query(
                 self.File).filter(self.File.date_upload<=time_old)
 
+        def download_all_backups(self):
+            jobs = self.vault.list_jobs(completed=True)
+            for job in jobs:
+                if job.description:
+                    job.download_to_file(job.description)
+
         def upload(self):
             if not self.name_backup:
                 raise SystemExit(111)
 
             print(green('Uploading file to Glacier...'))
-            archive_id = self.vault.upload_archive(self.name_backup)
+            archive_id = self.vault.upload_archive(
+                self.name_backup, description=self.name_backup.split('/')[-1])
             retrieve_job = self.vault.retrieve_archive(archive_id)
             print(green('The job {0} is begin...'.format(retrieve_job)))
             self.add_archive_id(archive_id)
