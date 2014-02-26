@@ -10,6 +10,7 @@ Usage:
   zoort backup <database> <user> <password> [--path=<path>] [--upload_s3=<s3>] [--upload_glacier=<glacier>] [--encrypt=<encrypt>]
   zoort backup <database> <user> <password> <host> [--path=<path>] [--upload_s3=<s3>] [--upload_glacier=<glacier>] [--encrypt=<encrypt>]
   zoort backup_all [--auth=<auth>] [--path=<path>] [--upload_s3=<s3>] [--upload_glacier=<glacier>] [--encrypt=<encrypt>]
+  zoort download_all
   zoort decrypt <path>
   zoort configure
   zoort --version
@@ -191,8 +192,6 @@ def factory_uploader(type_uploader, *args, **kwargs):
                                      aws_secret_access_key=AWS_SECRET_KEY)
             self.vault = self.glacier_connection.get_vault(AWS_VAULT_NAME)
 
-            self.connect_db()
-
         def connect_db(self):
             if not self.path:
                 raise SystemExit(110)
@@ -219,10 +218,12 @@ def factory_uploader(type_uploader, *args, **kwargs):
         def download_all_backups(self):
             jobs = self.vault.list_jobs(completed=True)
             for job in jobs:
+                print(green('Downloading {0}'.format(job)))
                 if job.description:
                     job.download_to_file(job.description)
 
         def upload(self):
+            self.connect_db()
             if not self.name_backup:
                 raise SystemExit(111)
 
@@ -465,6 +466,12 @@ def main():
         decrypt_file(args.get('<path>'))
     if args.get('configure'):
         configure()
+    if args.get('download_all'):
+        download_all()
+
+
+def download_all():
+    factory_uploader('Glacier', action='download')
 
 
 def backup_database(args):
