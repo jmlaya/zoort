@@ -37,6 +37,11 @@ from docopt import docopt
 from functools import wraps
 from fabric.api import local, hide
 from fabric.colors import blue, red, green
+from sqlalchemy import create_engine
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy import Column, Integer, String
+from sqlalchemy.orm import sessionmaker
+Base = declarative_base()
 
 try:
     input = raw_input
@@ -154,6 +159,28 @@ def factory_uploader(type_uploader, *args, **kwargs):
 
     class AWSGlacier(object):
 
+        class File(Base):
+            __tablename__ = 'file'
+
+            id = Column(Integer, primary_key=True)
+            date_upload = Column(String)
+            filename = Column(String)
+            archive_id = Column(String)
+
+            def __init__(self, date_upload, filename, archive_id):
+                self.date_upload = date_upload
+                self.filename = filename
+                self.archive_id = archive_id
+
+            def __repr__(self):
+                return "<File('%s','%s', '%s')>" % (self.date_upload,
+                                                    self.filename,
+                                                    self.archive_id)
+
+        File.__table__
+
+        File.__mapper__
+
         def __init__(self, *args, **kwargs):
             super(AWSGlacier, self).__init__()
             self.__dict__.update(kwargs)
@@ -169,19 +196,25 @@ def factory_uploader(type_uploader, *args, **kwargs):
         def connect_db(self):
             if not self.path:
                 raise SystemExit(110)
-            self.conn = sqlite3.connect(self.path)
-            self.cursor = self.conn.cursor()
-            self.verify_table()
+            self.engine = create_engine('sqlite:///{0}'.format(self.path))
+            Base.metadata.create_all(self.engine)
+            Session = sessionmaker(bind=self.engine)
+            self.session = Session()
 
         def commit(self):
-            print(green("Saving data.."))
-            self.conn.commit()
-            self.conn.close()
+            self.session.dirty
+            self.session.new
+            self.session.commit()
 
         def add_archive_id(self, archiveID):
-            query = ('INSERT INTO "file" ("date_upload","archiveID") '
-                     'VALUES("{0}", "{1}");')
-            self.cursor.execute(query.format(str(time.time()), archiveID))
+            archive_data = self.File(str(time.time()),
+                                     self.name_backup,
+                                     archiveID)
+            self.session.add(archive_data)
+
+        def get_file_from_time(self, time_old):
+            return self.session.query(
+                self.File).filter(self.File.date_upload<=time_old)
 
         def verify_table(self):
             try:
@@ -189,7 +222,8 @@ def factory_uploader(type_uploader, *args, **kwargs):
             except sqlite3.OperationalError:
                 self.cursor.execute('''CREATE TABLE file
                     (date_upload DATETIME NOT NULL ,
-                    archiveID VARCHAR NOT NULL  UNIQUE )
+                    archiveID VARCHAR NOT NULL  UNIQUE,
+                    name_file VARCHAR NOT NULL  UNIQUE )
                     ''')
 
         def upload(self):
@@ -199,12 +233,19 @@ def factory_uploader(type_uploader, *args, **kwargs):
             print(green('Uploading file to Glacier...'))
             archive_id = self.vault.upload_archive(self.name_backup)
             retrieve_job = self.vault.retrieve_archive(archive_id)
+            print(green('The job {0} is begin...'.format(retrieve_job)))
             self.add_archive_id(archive_id)
-
             self.commit()
 
         def delete(self):
-            pass
+            dif = time.time() - DELETE_WEEKS * 7 * 24 * 60 * 60
+            archive_id_set = self.get_file_from_time(dif)
+            for archive in archive_id_set:
+                print(red('Deleting {0}...'.format(archive[0])))
+                self.vault.delete_archive(archive[0])
+                self.session.delete(archive)
+                self.session.flush()
+            self.commit()
 
     uploaders = {'S3': AWSS3,
                  'Glacier': AWSGlacier}
@@ -380,7 +421,7 @@ def decrypt_file(path, password=None):
     if not password:
         password = PASSWORD_FILE
     if path and not os.path.isfile(path):
-        raise SystemExit(_error_codes.get(06))
+        raise SystemExit(_error_codes.get(106))
     query = 'openssl aes-128-cbc -d -salt -in {0} -out {1} -k {2}'
     with hide('output'):
         local(query.format(path, path + '.tar.gz', PASSWORD_FILE))
