@@ -235,9 +235,11 @@ def factory_uploader(type_uploader, *args, **kwargs):
             retrieve_job = self.vault.retrieve_archive(archive_id)
             print(green('The job {0} is begin...'.format(retrieve_job)))
             self.add_archive_id(archive_id)
+            self.delete()
             self.commit()
 
         def delete(self):
+            print(green("Checking old backups..."))
             dif = time.time() - DELETE_WEEKS * 7 * 24 * 60 * 60
             archive_id_set = self.get_file_from_time(dif)
             for archive in archive_id_set:
@@ -245,7 +247,6 @@ def factory_uploader(type_uploader, *args, **kwargs):
                 self.vault.delete_archive(archive[0])
                 self.session.delete(archive)
                 self.session.flush()
-            self.commit()
 
     uploaders = {'S3': AWSS3,
                  'Glacier': AWSGlacier}
