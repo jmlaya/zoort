@@ -253,7 +253,12 @@ def factory_uploader(type_uploader, *args, **kwargs):
     if not upload:
         raise SystemExit(_error_codes.get(107))
 
-    return upload.upload()
+    action = kwargs.get('action')
+
+    if action == 'upload':
+        upload.upload()
+    elif action == 'download':
+        upload.download_all_backups()
 
 
 def transform_type(value, typ=None):
