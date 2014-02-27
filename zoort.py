@@ -512,19 +512,8 @@ def load_config(func):
     '''
     @wraps(func)
     def wrapper(*args, **kwargs):
-        config = None
+        config_data = get_config_json()
         try:
-            config = open('/etc/zoort/config.json')
-        except IOError:
-            try:
-                config = open(
-                    os.path.join(
-                        os.path.expanduser('~'),
-                        '.zoort/config.json'))
-            except IOError:
-                raise SystemExit(_error_codes.get(100))
-        try:
-            config_data = json.load(config)
             global ADMIN_USER
             global ADMIN_PASSWORD
             global AWS_ACCESS_KEY
