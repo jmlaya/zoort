@@ -79,6 +79,12 @@ _error_codes = {
     109: u'Error #09: Oh, you are not root user! :(',
     110: u'Error #10: Path for sqlite database is not defined!.',
     111: u'Error #11: Backup path is invalid.',
+    112: u'Error #12: Unable to connect to {0}: {1}',
+    113: u'Error #13: Can\'t create directory {0} in {1}: {2}',
+    114: u'Error #14: Can\'t change directory to {0}: {1}',
+    115: u'Error #15: Can\'t upload file {0} in {1}: {2}',
+    116: u'Error #16: Can\'t delete file {0}: {1}',
+    117: u'Error #17: Can\'t get file date {0}: {1}',
     200: u'Warning #00: Field is requerid!',
     201: u'Warning #01: Field Type is wrong!',
     300: u'Success #00: Zoort is configure :)'
@@ -274,7 +280,7 @@ def factory_uploader(type_uploader, *args, **kwargs):
             try:
                 self.conn = ftplib.FTP(self.host, self.user, self.passwd)
             except Exception, e:
-                raise SystemExit('Unable to connect to {0}: {1}'.format(self.host, e))
+                raise SystemExit(_error_codes.get(12).format(self.host, e))
 
             print('Connected to {0}'.format(self.host))
 
@@ -287,7 +293,7 @@ def factory_uploader(type_uploader, *args, **kwargs):
             try:
                 self.conn.mkd(dirname)
             except Exception, e:
-                raise SystemExit('Error to create directory {0} in {1}: {2}'.
+                raise SystemExit(_error_codes.get(13).
                                     format(dirname, self.conn.pwd(), e))
 
 
@@ -295,7 +301,7 @@ def factory_uploader(type_uploader, *args, **kwargs):
             try:
                 self.conn.cwd(dirname)
             except Exception, e:
-                raise SystemExit('Error to change directory to {0}: {1}'.format(dirname, e))
+                raise SystemExit(_error_codes.get(14).format(dirname, e))
 
         
         def send_file(self, filename):
@@ -303,7 +309,7 @@ def factory_uploader(type_uploader, *args, **kwargs):
                 backup_file = open(filename, 'rb')
                 self.conn.storbinary('STOR ' + filename, backup_file)
             except Exception, e:
-                raise SystemExit('Error to upload file {0} in {1}: {2}'.
+                raise SystemExit(_error_codes.get(15).
                                     format(filename, path, e))
 
 
@@ -311,14 +317,14 @@ def factory_uploader(type_uploader, *args, **kwargs):
             try:
                 self.conn.delete(filename)
             except Exception, e:
-                raise SystemExit('Error to delete file {0}: {1}'.format(filename, e))
+                raise SystemExit(_error_codes.get(16).format(filename, e))
 
 
         def get_file_date(self, filename):
             try:
                 mdtm = self.conn.sendcmd('MDTM ' + filename)
             except Exception, e:
-                raise SystemExit('Error to get file date {0}: {1}'.format(filename, e))
+                raise SystemExit(_error_codes.get(17).format(filename, e))
 
             return mdtm[4:]
 
@@ -330,7 +336,7 @@ def factory_uploader(type_uploader, *args, **kwargs):
             ret = []
             
             for path in self.conn.nlst():
-                if path == '.' or path == '..':
+                if path in ['.', '..']:
                     continue
                 ret.append(path)
 
@@ -346,7 +352,7 @@ def factory_uploader(type_uploader, *args, **kwargs):
             except:
                 self.change_dir('/')
                 for folder in path.split('/'):
-                    if folder == '':
+                    if not folder:
                         continue
 
                     if not folder in self.conn.nlst():
