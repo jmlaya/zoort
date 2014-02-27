@@ -33,6 +33,7 @@ import time
 import dateutil.parser
 import boto
 import shutil
+import ftplib
 from boto.s3.key import Key
 from docopt import docopt
 from functools import wraps
@@ -78,6 +79,12 @@ _error_codes = {
     109: u'Error #09: Oh, you are not root user! :(',
     110: u'Error #10: Path for sqlite database is not defined!.',
     111: u'Error #11: Backup path is invalid.',
+    112: u'Error #12: Unable to connect to {0}: {1}',
+    113: u'Error #13: Can\'t create directory {0} in {1}: {2}',
+    114: u'Error #14: Can\'t change directory to {0}: {1}',
+    115: u'Error #15: Can\'t upload file {0} in {1}: {2}',
+    116: u'Error #16: Can\'t delete file {0}: {1}',
+    117: u'Error #17: Can\'t get file date {0}: {1}',
     200: u'Warning #00: Field is requerid!',
     201: u'Warning #01: Field Type is wrong!',
     300: u'Success #00: Zoort is configure :)'
@@ -93,7 +100,7 @@ def factory_uploader(type_uploader, *args, **kwargs):
         now = int(time.time())
         format = '%m-%d-%Y %H:%M:%S'
         date_parser = dateutil.parser.parse(creation_date)
-        # convert '%m-%d-%YT%H:%M:%S.000z' to '%m-%d-%Y %H:%M:%S' format
+        # convert string date to '%m-%d-%Y %H:%M:%S' format
         cd_strf = date_parser.strftime(format)
         # convert '%m-%d-%Y %H:%M:%S' to time.struct_time
         cd_struct = time.strptime(cd_strf, format)
@@ -246,8 +253,162 @@ def factory_uploader(type_uploader, *args, **kwargs):
                 self.session.delete(archive)
                 self.session.flush()
 
+
+    class FTP(object):
+        
+        def __init__(self, *args, **kwargs):
+            super(FTP, self).__init__()
+            self.__dict__.update(kwargs)
+            config_data = get_config_json()
+
+            self.host = kwargs.get('host', 
+                        config_data.get('ftp').get('host'))
+            self.user = kwargs.get('user', 
+                        config_data.get('ftp').get('user'))
+            self.passwd = kwargs.get('passwd', 
+                        config_data.get('ftp').get('passwd'))
+            self.path = normalize_path(kwargs.get('path', \
+                        config_data.get('ftp').get('path')))
+
+            self.name_backup = kwargs.get('name_backup', None)
+
+            if not self.name_backup:
+                raise SystemExit(_error_codes.get(103))
+        
+        
+        def connect(self):
+            try:
+                self.conn = ftplib.FTP(self.host, self.user, self.passwd)
+            except Exception, e:
+                raise SystemExit(_error_codes.get(12).format(self.host, e))
+
+            print('Connected to {0}'.format(self.host))
+
+        
+        def disconnect(self):
+            self.conn.quit()
+
+
+        def mkdir(self, dirname):
+            try:
+                self.conn.mkd(dirname)
+            except Exception, e:
+                raise SystemExit(_error_codes.get(13).
+                                    format(dirname, self.conn.pwd(), e))
+
+
+        def change_dir(self, dirname):
+            try:
+                self.conn.cwd(dirname)
+            except Exception, e:
+                raise SystemExit(_error_codes.get(14).format(dirname, e))
+
+        
+        def send_file(self, filename):
+            try:
+                backup_file = open(filename, 'rb')
+                self.conn.storbinary('STOR ' + filename, backup_file)
+            except Exception, e:
+                raise SystemExit(_error_codes.get(15).
+                                    format(filename, path, e))
+
+
+        def delete_file(self, filename):
+            try:
+                self.conn.delete(filename)
+            except Exception, e:
+                raise SystemExit(_error_codes.get(16).format(filename, e))
+
+
+        def get_file_date(self, filename):
+            try:
+                mdtm = self.conn.sendcmd('MDTM ' + filename)
+            except Exception, e:
+                raise SystemExit(_error_codes.get(17).format(filename, e))
+
+            return mdtm[4:]
+
+
+        def list_files(self):
+            '''
+            Return all files in the actual directory without '.' and '..'
+            '''
+            ret = []
+            
+            for path in self.conn.nlst():
+                if path in ['.', '..']:
+                    continue
+                ret.append(path)
+
+            return ret
+
+        
+        def goto_path(self, path):
+            '''
+            Change to 'path' directory or create if not exist
+            '''
+            try:
+                self.conn.cwd(folder)
+            except:
+                self.change_dir('/')
+                for folder in path.split('/'):
+                    if not folder:
+                        continue
+
+                    if not folder in self.conn.nlst():
+                        self.mkdir(folder)
+                    
+                    self.change_dir(folder)
+
+        
+        def upload(self):
+            self.connect()
+            
+            path = normalize_path(self.path) + 'week-' \
+                    + str(datetime.datetime.now().isocalendar()[1])
+            self.goto_path(path)
+
+            print('Uploading file to {0} in {1}'.format(self.host, self.conn.pwd()))
+            name_backup = self.name_backup.split('/')[-1]
+            self.send_file(name_backup)
+            self.delete()
+
+            self.disconnect()
+
+        
+        def delete(self):
+            global DELETE_BACKUP
+
+            if not DELETE_BACKUP:
+                return
+
+            for filename in self._get_old_backup():
+                self.delete_file(filename)
+
+
+        def _get_old_backup(self):
+            global DELETE_WEEKS
+            ret = []
+            dif = DELETE_WEEKS * 7 * 24 * 60
+
+            self.goto_path(self.path)
+
+            for path in self.list_files():
+                self.change_dir(path)
+
+                for backup in self.list_files():
+                    if get_diff_date(self.get_file_date(backup))  >= dif:
+                        # Add full path of backup
+                        ret.append(self.conn.pwd() + '/' + backup)
+                
+                self.change_dir('..')
+
+            return ret
+
+
     uploaders = {'S3': AWSS3,
-                 'Glacier': AWSGlacier}
+                 'Glacier': AWSGlacier,
+                 'FTP': FTP}
 
     upload = uploaders.get(type_uploader)(*args, **kwargs)
 
@@ -283,6 +444,22 @@ def get_input(msg, is_password=False, verify_type=None):
         print(red(_error_codes.get(200)))
         in_user = transform_type(inp(msg), verify_type)
     return in_user
+
+
+def get_config_json():
+    try:
+        config = open('/etc/zoort/config.json')
+    except IOError:
+        try:
+            config = open(
+                os.path.join(
+                    os.path.expanduser('~'),
+                    '.zoort/config.json'))
+        except IOError:
+            raise SystemExit(_error_codes.get(100))
+
+    config_data = json.load(config)
+    return config_data
 
 
 def configure():
@@ -341,19 +518,8 @@ def load_config(func):
     '''
     @wraps(func)
     def wrapper(*args, **kwargs):
-        config = None
+        config_data = get_config_json()
         try:
-            config = open('/etc/zoort/config.json')
-        except IOError:
-            try:
-                config = open(
-                    os.path.join(
-                        os.path.expanduser('~'),
-                        '.zoort/config.json'))
-            except IOError:
-                raise SystemExit(_error_codes.get(100))
-        try:
-            config_data = json.load(config)
             global ADMIN_USER
             global ADMIN_PASSWORD
             global AWS_ACCESS_KEY
