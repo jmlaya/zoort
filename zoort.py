@@ -261,7 +261,7 @@ def factory_uploader(type_uploader, *args, **kwargs):
                         config_data.get('ftp').get('user'))
             self.passwd = kwargs.get('passwd', 
                         config_data.get('ftp').get('passwd'))
-            self.path = normalize_path(kwargs.get('name_backup', \
+            self.path = normalize_path(kwargs.get('path', \
                         config_data.get('ftp').get('path')))
 
             self.name_backup = kwargs.get('name_backup', None)
