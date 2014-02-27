@@ -318,7 +318,7 @@ def factory_uploader(type_uploader, *args, **kwargs):
             try:
                 mdtm = self.conn.sendcmd('MDTM ' + filename)
             except Exception, e:
-                raise SystemExit('Error to delete file {0}: {1}'.format(filename, e))
+                raise SystemExit('Error to get file date {0}: {1}'.format(filename, e))
 
             return mdtm[4:]
 
