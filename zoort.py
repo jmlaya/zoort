@@ -302,6 +302,13 @@ def factory_uploader(type_uploader, *args, **kwargs):
             except:
                 raise SystemExit('Error to create directory {0} in {1}'.format(dirname, self.conn.pwd()))
 
+
+        def change_dir(self, dirname):
+            try:
+                self.conn.cwd('/')
+            except:
+                raise SystemExit('Error to change directory to {0}'.format(dirname))
+
         
         def send_file(self, filename):
             try:
@@ -323,9 +330,9 @@ def factory_uploader(type_uploader, *args, **kwargs):
             Change to 'path' directory or create if not exist
             '''
             try:
-                self.conn.cwd(path)
+                self.conn.cwd(folder)
             except:
-                self.conn.cwd('/')
+                self.change_dir('/')
                 for folder in path.split('/'):
                     if folder == '':
                         continue
@@ -333,7 +340,7 @@ def factory_uploader(type_uploader, *args, **kwargs):
                     if not folder in self.conn.nlst():
                         self.mkdir(folder)
                     
-                    self.conn.cwd(folder)
+                    self.change_dir(folder)
 
 
         def get_file_date(self, filename):
@@ -378,7 +385,7 @@ def factory_uploader(type_uploader, *args, **kwargs):
                 if path == '.' or path == '..':
                     continue
 
-                self.conn.cwd(path)
+                self.change_dir(path)
 
                 for backup in self.conn.nlst():
                     if backup == '.' or backup == '..':
@@ -388,7 +395,7 @@ def factory_uploader(type_uploader, *args, **kwargs):
                         # Add full path of backup
                         ret.append(self.conn.pwd() + '/' + backup)
                 
-                self.conn.cwd('..')
+                self.change_dir('..')
 
             return ret
 
