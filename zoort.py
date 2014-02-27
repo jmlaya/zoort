@@ -324,6 +324,20 @@ def factory_uploader(type_uploader, *args, **kwargs):
             except:
                 raise SystemExit('Error to delete file {0}'.format(filename))
 
+
+        def list_files(self):
+            '''
+            Return all files in the actual directory without '.' and '..'
+            '''
+            ret = []
+            
+            for path in self.conn.nlst():
+                if path == '.' or path == '..':
+                    continue
+                ret.append(path)
+
+            return ret
+
         
         def goto_path(self, path):
             '''
@@ -381,16 +395,10 @@ def factory_uploader(type_uploader, *args, **kwargs):
             self.goto_path(self.path)
             path_list = self.conn.nlst()
 
-            for path in path_list:
-                if path == '.' or path == '..':
-                    continue
-
+            for path in self.list_files():
                 self.change_dir(path)
 
-                for backup in self.conn.nlst():
-                    if backup == '.' or backup == '..':
-                        continue
-
+                for backup in self.list_files():
                     if get_diff_date(self.get_file_date(backup))  >= 60:
                         # Add full path of backup
                         ret.append(self.conn.pwd() + '/' + backup)
