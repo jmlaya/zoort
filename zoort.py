@@ -246,6 +246,153 @@ def factory_uploader(type_uploader, *args, **kwargs):
                 self.session.delete(archive)
                 self.session.flush()
 
+
+    class FTP(object):
+        
+        def __init__(self, *args, **kwargs):
+            super(FTP, self).__init__()
+            self.__dict__.update(kwargs)
+            
+            # Change this to a method
+            try:
+                config = open('/etc/zoort/config.json')
+            except IOError:
+                try:
+                    config = open(
+                        os.path.join(
+                            os.path.expanduser('~'),
+                            '.zoort/config.json'))
+                except IOError:
+                    raise SystemExit(_error_codes.get(100))
+
+            config_data = json.load(config)
+            # END Change this to a method
+
+            self.host = kwargs.get('host', 
+                        config_data.get('ftp').get('host'))
+            self.user = kwargs.get('user', 
+                        config_data.get('ftp').get('user')))
+            self.passwd = kwargs.get('passwd', 
+                        config_data.get('ftp').get('passwd')))
+            self.path = normalize_path(kwargs.get('name_backup'), 
+                        config_data.get('ftp').get('path')))
+
+            self.name_backup = kwargs.get('name_backup', None)
+
+            if not self.name_backup:
+                raise SystemExit(_error_codes.get(103))
+        
+        
+        def connect(self):
+            try:
+                self.conn = ftplib.FTP(self.host, self.user, self.passwd)
+            except:
+                raise SystemExit('Unable to connect to {0}'.format(self.host))
+
+            print ('Connected to {0}'.format(self.host))
+
+        
+        def disconnect(self):
+            self.conn.quit()
+
+
+        def mkdir(self, dirname):
+            try:
+                self.conn.mkd(dirname)
+            except:
+                raise SystemExit('Error to create directory {0} in {1}'.format(dirname, self.conn.pwd()))
+
+        
+        def send_file(self, filename):
+            try:
+                backup_file = open(filename, 'rb')
+                self.conn.storbinary('STOR ' + filename, backup_file)
+            except:
+                print ('Error to upload file {0} in {1}'.format(self.name_backup, path))
+
+
+        def delete_file(self, filename):
+            try:
+                self.conn.delete(filename)
+            except:
+                raise SystemExit('Error to delete file {0}'.format(filename))
+
+        
+        def goto_path(self, path):
+            '''
+            Change to 'path' directory or create if not exist
+            '''
+            try:
+                self.conn.cwd(path)
+            except:
+                self.conn.cwd('/')
+                for folder in path.split('/'):
+                    if folder == '':
+                        continue
+
+                    if not folder in self.conn.nlst():
+                        self.mkdir(folder)
+                    
+                    self.conn.cwd(folder)
+
+
+        def get_file_date(self, filename):
+            mdtm = self.conn.sendcmd('MDTM ' + filename)
+            return mdtm[4:]
+        
+        
+        def upload(self):
+            self.connect()
+            
+            path = normalize_path(self.path) + 'week-' +
+                      str(datetime.datetime.now().isocalendar()[1])
+            self.goto_path(path)
+
+            print ('Uploading file to {0} in {1}'.format(self.host, self.conn.pwd()))
+
+            name_backup = self.name_backup.split('/')[-1]
+            self.send_file(name_backup)
+            self.delete()
+            self.disconnect()
+
+        
+        def delete(self):
+            global DELETE_BACKUP
+
+            if not DELETE_BACKUP:
+                return
+
+            for filename in self._get_old_backup():
+                self.delete_file(filename)
+
+
+        def _get_old_backup(self):
+            global DELETE_WEEKS
+            ret = []
+            dif = DELETE_WEEKS * 7 * 24 * 60
+
+            self.goto_path(self.path)
+            path_list = self.conn.nlst()
+
+            for path in path_list:
+                if path == '.' or path == '..':
+                    continue
+
+                self.conn.cwd(path)
+
+                for backup in self.conn.nlst():
+                    if backup == '.' or backup == '..':
+                        continue
+
+                    if get_diff_date(self.get_file_date(backup))  >= 60:
+                        # Add full path of backup
+                        ret.append(self.conn.pwd() + '/' + backup)
+                
+                self.conn.cwd('..')
+
+            return ret
+
+
     uploaders = {'S3': AWSS3,
                  'Glacier': AWSGlacier}
 
