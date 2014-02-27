@@ -286,8 +286,8 @@ def factory_uploader(type_uploader, *args, **kwargs):
         def connect(self):
             try:
                 self.conn = ftplib.FTP(self.host, self.user, self.passwd)
-            except:
-                raise SystemExit('Unable to connect to {0}'.format(self.host))
+            except Exception, e:
+                raise SystemExit('Unable to connect to {0}: {1}'.format(self.host, e))
 
             print ('Connected to {0}'.format(self.host))
 
@@ -299,30 +299,30 @@ def factory_uploader(type_uploader, *args, **kwargs):
         def mkdir(self, dirname):
             try:
                 self.conn.mkd(dirname)
-            except:
-                raise SystemExit('Error to create directory {0} in {1}'.format(dirname, self.conn.pwd()))
+            except Exception, e:
+                raise SystemExit('Error to create directory {0} in {1}: {2}'.format(dirname, self.conn.pwd(), e))
 
 
         def change_dir(self, dirname):
             try:
                 self.conn.cwd('/')
-            except:
-                raise SystemExit('Error to change directory to {0}'.format(dirname))
+            except Exception, e:
+                raise SystemExit('Error to change directory to {0}: {1}'.format(dirname, e))
 
         
         def send_file(self, filename):
             try:
                 backup_file = open(filename, 'rb')
                 self.conn.storbinary('STOR ' + filename, backup_file)
-            except:
-                print ('Error to upload file {0} in {1}'.format(self.name_backup, path))
+            except Exception, e:
+                print ('Error to upload file {0} in {1}: {2}'.format(self.name_backup, path, e))
 
 
         def delete_file(self, filename):
             try:
                 self.conn.delete(filename)
-            except:
-                raise SystemExit('Error to delete file {0}'.format(filename))
+            except Exception, e:
+                raise SystemExit('Error to delete file {0}: {1}'.format(filename, e))
 
 
         def list_files(self):
@@ -358,8 +358,13 @@ def factory_uploader(type_uploader, *args, **kwargs):
 
 
         def get_file_date(self, filename):
-            mdtm = self.conn.sendcmd('MDTM ' + filename)
+            try:
+                mdtm = self.conn.sendcmd('MDTM ' + filename)
+            except Exception, e:
+                raise SystemExit('Error to delete file {0}: {1}'.format(filename, e))
+
             return mdtm[4:]
+
         
         
         def upload(self):
