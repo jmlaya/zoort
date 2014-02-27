@@ -33,6 +33,7 @@ import time
 import dateutil.parser
 import boto
 import shutil
+import ftplib
 from boto.s3.key import Key
 from docopt import docopt
 from functools import wraps
@@ -93,7 +94,7 @@ def factory_uploader(type_uploader, *args, **kwargs):
         now = int(time.time())
         format = '%m-%d-%Y %H:%M:%S'
         date_parser = dateutil.parser.parse(creation_date)
-        # convert '%m-%d-%YT%H:%M:%S.000z' to '%m-%d-%Y %H:%M:%S' format
+        # convert string date to '%m-%d-%Y %H:%M:%S' format
         cd_strf = date_parser.strftime(format)
         # convert '%m-%d-%Y %H:%M:%S' to time.struct_time
         cd_struct = time.strptime(cd_strf, format)
@@ -289,7 +290,7 @@ def factory_uploader(type_uploader, *args, **kwargs):
             except Exception, e:
                 raise SystemExit('Unable to connect to {0}: {1}'.format(self.host, e))
 
-            print ('Connected to {0}'.format(self.host))
+            print('Connected to {0}'.format(self.host))
 
         
         def disconnect(self):
@@ -300,12 +301,13 @@ def factory_uploader(type_uploader, *args, **kwargs):
             try:
                 self.conn.mkd(dirname)
             except Exception, e:
-                raise SystemExit('Error to create directory {0} in {1}: {2}'.format(dirname, self.conn.pwd(), e))
+                raise SystemExit('Error to create directory {0} in {1}: {2}'.
+                                    format(dirname, self.conn.pwd(), e))
 
 
         def change_dir(self, dirname):
             try:
-                self.conn.cwd('/')
+                self.conn.cwd(dirname)
             except Exception, e:
                 raise SystemExit('Error to change directory to {0}: {1}'.format(dirname, e))
 
@@ -315,7 +317,8 @@ def factory_uploader(type_uploader, *args, **kwargs):
                 backup_file = open(filename, 'rb')
                 self.conn.storbinary('STOR ' + filename, backup_file)
             except Exception, e:
-                print ('Error to upload file {0} in {1}: {2}'.format(self.name_backup, path, e))
+                raise SystemExit('Error to upload file {0} in {1}: {2}'.
+                                    format(filename, path, e))
 
 
         def delete_file(self, filename):
@@ -323,6 +326,15 @@ def factory_uploader(type_uploader, *args, **kwargs):
                 self.conn.delete(filename)
             except Exception, e:
                 raise SystemExit('Error to delete file {0}: {1}'.format(filename, e))
+
+
+        def get_file_date(self, filename):
+            try:
+                mdtm = self.conn.sendcmd('MDTM ' + filename)
+            except Exception, e:
+                raise SystemExit('Error to delete file {0}: {1}'.format(filename, e))
+
+            return mdtm[4:]
 
 
         def list_files(self):
@@ -356,29 +368,19 @@ def factory_uploader(type_uploader, *args, **kwargs):
                     
                     self.change_dir(folder)
 
-
-        def get_file_date(self, filename):
-            try:
-                mdtm = self.conn.sendcmd('MDTM ' + filename)
-            except Exception, e:
-                raise SystemExit('Error to delete file {0}: {1}'.format(filename, e))
-
-            return mdtm[4:]
-
-        
         
         def upload(self):
             self.connect()
             
-            path = normalize_path(self.path) + 'week-' +
-                      str(datetime.datetime.now().isocalendar()[1])
+            path = normalize_path(self.path) + 'week-' \
+                    + str(datetime.datetime.now().isocalendar()[1])
             self.goto_path(path)
 
-            print ('Uploading file to {0} in {1}'.format(self.host, self.conn.pwd()))
-
+            print('Uploading file to {0} in {1}'.format(self.host, self.conn.pwd()))
             name_backup = self.name_backup.split('/')[-1]
             self.send_file(name_backup)
             self.delete()
+
             self.disconnect()
 
         
@@ -398,13 +400,12 @@ def factory_uploader(type_uploader, *args, **kwargs):
             dif = DELETE_WEEKS * 7 * 24 * 60
 
             self.goto_path(self.path)
-            path_list = self.conn.nlst()
 
             for path in self.list_files():
                 self.change_dir(path)
 
                 for backup in self.list_files():
-                    if get_diff_date(self.get_file_date(backup))  >= 60:
+                    if get_diff_date(self.get_file_date(backup))  >= dif:
                         # Add full path of backup
                         ret.append(self.conn.pwd() + '/' + backup)
                 
