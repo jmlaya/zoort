@@ -253,29 +253,15 @@ def factory_uploader(type_uploader, *args, **kwargs):
         def __init__(self, *args, **kwargs):
             super(FTP, self).__init__()
             self.__dict__.update(kwargs)
-            
-            # Change this to a method
-            try:
-                config = open('/etc/zoort/config.json')
-            except IOError:
-                try:
-                    config = open(
-                        os.path.join(
-                            os.path.expanduser('~'),
-                            '.zoort/config.json'))
-                except IOError:
-                    raise SystemExit(_error_codes.get(100))
-
-            config_data = json.load(config)
-            # END Change this to a method
+            config_data = get_config_json()
 
             self.host = kwargs.get('host', 
                         config_data.get('ftp').get('host'))
             self.user = kwargs.get('user', 
-                        config_data.get('ftp').get('user')))
+                        config_data.get('ftp').get('user'))
             self.passwd = kwargs.get('passwd', 
-                        config_data.get('ftp').get('passwd')))
-            self.path = normalize_path(kwargs.get('name_backup'), 
+                        config_data.get('ftp').get('passwd'))
+            self.path = normalize_path(kwargs.get('name_backup', \
                         config_data.get('ftp').get('path')))
 
             self.name_backup = kwargs.get('name_backup', None)
@@ -415,7 +401,8 @@ def factory_uploader(type_uploader, *args, **kwargs):
 
 
     uploaders = {'S3': AWSS3,
-                 'Glacier': AWSGlacier}
+                 'Glacier': AWSGlacier,
+                 'FTP': FTP}
 
     upload = uploaders.get(type_uploader)(*args, **kwargs)
 
@@ -451,6 +438,22 @@ def get_input(msg, is_password=False, verify_type=None):
         print(red(_error_codes.get(200)))
         in_user = transform_type(inp(msg), verify_type)
     return in_user
+
+
+def get_config_json():
+    try:
+        config = open('/etc/zoort/config.json')
+    except IOError:
+        try:
+            config = open(
+                os.path.join(
+                    os.path.expanduser('~'),
+                    '.zoort/config.json'))
+        except IOError:
+            raise SystemExit(_error_codes.get(100))
+
+    config_data = json.load(config)
+    return config_data
 
 
 def configure():

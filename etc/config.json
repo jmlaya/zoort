@@ -8,6 +8,12 @@
         "aws_bucket_name": "<aws_bucket_name>",
         "aws_key_name": "<aws_key_name>"
     },
+    "ftp": {
+        "host": "host_name",
+        "user": "user_name",
+        "passwd": "password",
+        "path": "zoort/dump"
+    },
     "delete_backup": 1,
     "delete_weeks": 2
 }
