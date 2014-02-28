@@ -49,7 +49,7 @@ try:
 except NameError:
     pass
 
-__version__ = '0.1.6'
+__version__ = '0.1.7'
 __author__ = 'Yohan Graterol'
 __license__ = 'MIT'
 
@@ -139,7 +139,7 @@ def factory_uploader(type_uploader, *args, **kwargs):
             k.key = s3_key
             k.set_contents_from_filename(self.name_backup)
 
-        def _get_old_backup(self, bucket):
+        def _get_old_backups(self, bucket):
             ret = []
             dif = DELETE_WEEKS * 7 * 24 * 60
 
