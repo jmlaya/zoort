@@ -28,17 +28,17 @@ Requirements
 Usage
 -------
 
-`
-zoort backup <database> [--path=<path>] [--upload_s3=<s3>] [--upload_glacier=<glacier>] [--encrypt=<encrypt>]
-zoort backup <database> <user> <password> [--path=<path>] [--upload_s3=<s3>] [--upload_glacier=<glacier>] [--encrypt=<encrypt>]
-zoort backup <database> <user> <password> <host> [--path=<path>] [--upload_s3=<s3>] [--upload_glacier=<glacier>] [--encrypt=<encrypt>]
-zoort backup_all [--auth=<auth>] [--path=<path>] [--upload_s3=<s3>] [--upload_glacier=<glacier>] [--encrypt=<encrypt>]
-zoort download_all
-zoort decrypt <path>
-zoort configure
-zoort --version
-zoort --help 
-`
+::
+    zoort backup <database> [--path=<path>] [--upload_s3=<s3>] [--upload_glacier=<glacier>] [--encrypt=<encrypt>]
+    zoort backup <database> <user> <password> [--path=<path>] [--upload_s3=<s3>] [--upload_glacier=<glacier>] [--encrypt=<encrypt>]
+    zoort backup <database> <user> <password> <host> [--path=<path>] [--upload_s3=<s3>] [--upload_glacier=<glacier>] [--encrypt=<encrypt>]
+    zoort backup_all [--auth=<auth>] [--path=<path>] [--upload_s3=<s3>] [--upload_glacier=<glacier>] [--encrypt=<encrypt>]
+    zoort download_all
+    zoort decrypt <path>
+    zoort configure
+    zoort --version
+    zoort --help 
+
 
 License
 -------
