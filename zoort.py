@@ -403,22 +403,27 @@ def factory_uploader(type_uploader, *args, **kwargs):
             self.__dict__.update(kwargs)
             config_data = get_config_json()
 
-            self.key = config_data.get('dropbox').get('app_key')
-            self.secret = config_data.get('dropbox').get('app_secret')
-            self.auth_code = config_data.get('dropbox').get('auth_code')
+            self.auth_token = config_data.get('dropbox').get('auth_token')
             self.path = config_data.get('dropbox').get('path')
             self.name_backup = kwargs.get('name_backup', None)
-            self.conn = dropbox.client.DropboxOAuth2FlowNoRedirect(
-                self.key,
-                self.secret)
-            access_token, user_id = self.conn.finish(self.auth_code)
-            self.client = dropbox.client.DropboxClient(access_token)
+            self.client = dropbox.client.DropboxClient(self.auth_token)
             if not self.name_backup:
                 raise SystemExit(_error_codes.get(103))
 
+        def send_file(self, filename):
+            try:
+                backup_file = open(filename, 'rb')
+                response = self.client.put_file(filename, backup_file)
+                print('Uploading file {0} to directory "{1}" on Dropbox'.
+                      format(filename,
+                      response.get('root')))
+            except Exception, e:
+                raise SystemExit(_error_codes.get(115).format(
+                                 filename, 'Dropbox', e))
+
         def upload(self):
-            # self_client.put_file(self.name_backup)
-            self_client.account_info()
+            name_backup = self.name_backup.split('/')[-1]
+            self.send_file(name_backup)
 
     uploaders = {'S3': AWSS3,
                  'Glacier': AWSGlacier,
@@ -490,7 +495,7 @@ def configure(service=None):
     config_dict['admin_password'] = \
         get_input('MongoDB Password Admin (Is hidden): ', True)
 
-    if 'aws' or 'all' in service:
+    if 'aws' in service:
         # Define dict to aws key
         config_dict['aws'] = dict()
 
@@ -525,14 +530,14 @@ def configure(service=None):
         except ValueError:
             raise SystemExit(_error_codes.get(108))
 
-    if 'dropbox' or 'all' in service:
+    if 'dropbox' in service:
         # Define dict to dropbox key
         config_dict['dropbox'] = dict()
         # Dropbox Variables
         config_dict['dropbox']['app_key'] = \
-            get_input('Dropbox app key (Is hidden): ', True)
+            get_input('Dropbox app key: ')
         config_dict['dropbox']['secret_key'] = \
-            get_input('Dropbox secret key (Is hidden): ', True)
+            get_input('Dropbox secret key: ')
         try:
             flow = dropbox.client.DropboxOAuth2FlowNoRedirect(
                 config_dict['dropbox']['app_key'],
@@ -541,6 +546,11 @@ def configure(service=None):
             config_dict['dropbox']['auth_code'] = \
                 get_input('Go to ' + authorize_url + ', allow,' +
                           'an put the code here: ')
+            access_token, user_id = flow.finish(
+                config_dict['dropbox']['auth_code'])
+            config_dict['dropbox']['auth_token'] = \
+                get_input('This is your access token ' + access_token +
+                          ' Type the code: ')
 
         except ValueError:
             raise SystemExit(_error_codes.get(108))
