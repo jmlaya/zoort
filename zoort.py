@@ -151,7 +151,7 @@ def factory_uploader(type_uploader, *args, **kwargs):
             dif = DELETE_WEEKS * 7 * 24 * 60
 
             for key in bucket.list():
-                if get_diff_date(key.creation_date) >= dif:
+                if get_diff_date(key.last_modified) >= dif:
                     ret.append(key)
 
             return ret
@@ -342,7 +342,6 @@ def factory_uploader(type_uploader, *args, **kwargs):
 
             return ret
 
-        
         def goto_path(self, path):
             '''
             Change to 'path' directory or create if not exist
