@@ -719,9 +719,8 @@ def optional_actions(encrypt, path, compress_file, **kwargs):
     yes = ('y', 'Y')
     file_to_upload = normalize_path(path) + compress_file[1]
     if encrypt in yes:
-        encrypt_file(normalize_path(path) + compress_file[1],
-                     normalize_path(path) + compress_file[0])
-        file_to_upload = normalize_path(path) + compress_file[0]
+        encrypt_file(compress_file[1], compress_file[0])
+        file_to_upload = compress_file[0]
 
     if kwargs.get('s3') in yes:
         factory_uploader('S3', name_backup=file_to_upload,
