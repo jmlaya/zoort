@@ -21,6 +21,14 @@
         "path": "zoort/dump",
         "auth_token": "auth_token"
     },
+    "swift": {
+        "auth_url": "auth_url",
+        "access_key": "access_key",
+        "secret_key": "secret_key",
+        "auth_version": "auth_version",
+        "tenant_name": "tenant_name",
+        "container": "container"
+    },
     "delete_backup": 1,
     "delete_weeks": 2
 }
