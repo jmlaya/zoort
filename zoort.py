@@ -432,6 +432,7 @@ def get_input(msg, is_password=False, verify_type=None):
 
 
 def get_config_json():
+    config = None
     try:
         config = open('/etc/zoort/config.json')
     except IOError:
@@ -479,7 +480,7 @@ def configure():
                 get_input('AWS Vault Glacier name: ')
         config_dict['aws']['aws_key_name'] = \
             get_input('Key name for backups file: ')
-        config_dict['aws']['password_file'] = \
+        config_dict['password_file'] = \
             get_input('Password for encrypt with AES (Is hidden): ', True)
         config_dict['delete_backup'] = \
             int(get_input('Do you want delete old backups? '
@@ -561,7 +562,6 @@ def encrypt_file(path, output, password=None):
     '''
     if not password:
         password = PASSWORD_FILE
-    print(PASSWORD_FILE)
     query = 'openssl aes-128-cbc -salt -in {0} -out {1} -k {2}'
     with hide('output'):
         local(query.format(path, output, password))
