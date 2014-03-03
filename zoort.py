@@ -633,7 +633,7 @@ def backup_database(args):
     password = args.get('<password>')
     database = args['<database>']
     host = args.get('<host>') or '127.0.0.1'
-    path = args.get('[--path]') or os.getcwd()
+    path = args.get('--path') or os.getcwd()
     s3 = args.get('--upload_s3')
     glacier = args.get('--upload_glacier')
     encrypt = args.get('--encrypt') or 'Y'
@@ -670,7 +670,7 @@ def backup_all(args):
     username = None
     password = None
     auth = args.get('--auth')
-    path = args.get('--path') or os.getcwd()
+    path = args.get('--path')
     s3 = args.get('--upload_s3')
     glacier = args.get('--upload_glacier')
     encrypt = args.get('--encrypt') or 'Y'
@@ -678,6 +678,9 @@ def backup_all(args):
     if (ADMIN_USER and ADMIN_PASSWORD):
         username = ADMIN_USER
         password = ADMIN_PASSWORD
+
+    if not path:
+        path = os.getcwd()
     if path and not os.path.isdir(path):
         raise SystemExit(_error_codes.get(105))
 
