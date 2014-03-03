@@ -253,16 +253,14 @@ def factory_uploader(type_uploader, *args, **kwargs):
                 self.session.delete(archive)
                 self.session.flush()
 
-
     class FTP(object):
-        
+
         def __init__(self, *args, **kwargs):
             super(FTP, self).__init__()
             self.__dict__.update(kwargs)
             config_data = get_config_json()
 
-            self.host = kwargs.get('host', 
-                        config_data.get('ftp').get('host'))
+            self.host = kwargs.get('host', config_data.get('ftp').get('host'))
             self.user = kwargs.get('user', 
                         config_data.get('ftp').get('user'))
             self.passwd = kwargs.get('passwd', 
@@ -274,8 +272,7 @@ def factory_uploader(type_uploader, *args, **kwargs):
 
             if not self.name_backup:
                 raise SystemExit(_error_codes.get(103))
-        
-        
+
         def connect(self):
             try:
                 self.conn = ftplib.FTP(self.host, self.user, self.passwd)
@@ -284,10 +281,8 @@ def factory_uploader(type_uploader, *args, **kwargs):
 
             print('Connected to {0}'.format(self.host))
 
-        
         def disconnect(self):
             self.conn.quit()
-
 
         def mkdir(self, dirname):
             try:
@@ -296,13 +291,11 @@ def factory_uploader(type_uploader, *args, **kwargs):
                 raise SystemExit(_error_codes.get(13).
                                     format(dirname, self.conn.pwd(), e))
 
-
         def change_dir(self, dirname):
             try:
                 self.conn.cwd(dirname)
             except Exception, e:
                 raise SystemExit(_error_codes.get(14).format(dirname, e))
-
         
         def send_file(self, filename):
             try:
@@ -310,15 +303,13 @@ def factory_uploader(type_uploader, *args, **kwargs):
                 self.conn.storbinary('STOR ' + filename, backup_file)
             except Exception, e:
                 raise SystemExit(_error_codes.get(15).
-                                    format(filename, path, e))
-
+                                    format(filename, self.path, e))
 
         def delete_file(self, filename):
             try:
                 self.conn.delete(filename)
             except Exception, e:
                 raise SystemExit(_error_codes.get(16).format(filename, e))
-
 
         def get_file_date(self, filename):
             try:
@@ -327,7 +318,6 @@ def factory_uploader(type_uploader, *args, **kwargs):
                 raise SystemExit(_error_codes.get(17).format(filename, e))
 
             return mdtm[4:]
-
 
         def list_files(self):
             '''
@@ -347,7 +337,7 @@ def factory_uploader(type_uploader, *args, **kwargs):
             Change to 'path' directory or create if not exist
             '''
             try:
-                self.conn.cwd(folder)
+                self.conn.cwd(self.folder)
             except:
                 self.change_dir('/')
                 for folder in path.split('/'):
@@ -358,7 +348,6 @@ def factory_uploader(type_uploader, *args, **kwargs):
                         self.mkdir(folder)
                     
                     self.change_dir(folder)
-
         
         def upload(self):
             self.connect()
@@ -374,7 +363,6 @@ def factory_uploader(type_uploader, *args, **kwargs):
 
             self.disconnect()
 
-        
         def delete(self):
             global DELETE_BACKUP
 
@@ -383,7 +371,6 @@ def factory_uploader(type_uploader, *args, **kwargs):
 
             for filename in self._get_old_backup():
                 self.delete_file(filename)
-
 
         def _get_old_backup(self):
             global DELETE_WEEKS
@@ -403,7 +390,6 @@ def factory_uploader(type_uploader, *args, **kwargs):
                 self.change_dir('..')
 
             return ret
-
 
     uploaders = {'S3': AWSS3,
                  'Glacier': AWSGlacier,
@@ -539,8 +525,8 @@ def load_config(func):
             AWS_KEY_NAME = config_data.get('aws').get('aws_key_name')
             DELETE_BACKUP = config_data.get('delete_backup')
             DELETE_WEEKS = config_data.get('delete_weeks')
-        except ValueError:
-            pass
+        except ValueError, e:
+            print(e)
         return func(*args, **kwargs)
     return wrapper
 
