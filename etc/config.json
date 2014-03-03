@@ -14,6 +14,13 @@
         "passwd": "password",
         "path": "zoort/dump"
     },
+    "dropbox": {
+        "app_key": "app_key",
+        "app_secret": "app_secret",
+        "auth_code": "auth_code",
+        "path": "zoort/dump",
+        "auth_token": "auth_token"
+    },
     "delete_backup": 1,
     "delete_weeks": 2
 }

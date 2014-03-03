@@ -6,13 +6,15 @@
 '''zoort
 
 Usage:
-  zoort backup <database> [--path=<path>] [--upload_s3=<s3>] [--upload_glacier=<glacier>] [--encrypt=<encrypt>]
+  zoort backup <database> [--path=<path>] [--upload_s3=<s3>] [--upload_glacier=<glacier>] [--upload_dropbox=<dropbox>] [--encrypt=<encrypt>]
   zoort backup <database> <user> <password> [--path=<path>] [--upload_s3=<s3>] [--upload_glacier=<glacier>] [--encrypt=<encrypt>]
   zoort backup <database> <user> <password> <host> [--path=<path>] [--upload_s3=<s3>] [--upload_glacier=<glacier>] [--encrypt=<encrypt>]
   zoort backup_all [--auth=<auth>] [--path=<path>] [--upload_s3=<s3>] [--upload_glacier=<glacier>] [--encrypt=<encrypt>]
   zoort download_all
   zoort decrypt <path>
   zoort configure
+  zoort configure-aws
+  zoort configure-dropbox
   zoort --version
   zoort --help
 
@@ -34,6 +36,7 @@ import dateutil.parser
 import boto
 import shutil
 import ftplib
+import dropbox
 from boto.s3.key import Key
 from docopt import docopt
 from functools import wraps
@@ -220,7 +223,7 @@ def factory_uploader(type_uploader, *args, **kwargs):
 
         def get_file_from_time(self, time_old):
             return self.session.query(
-                self.File).filter(self.File.date_upload<=time_old)
+                self.File).filter(self.File.date_upload <= time_old)
 
         def download_all_backups(self):
             jobs = self.vault.list_jobs(completed=True)
@@ -260,6 +263,7 @@ def factory_uploader(type_uploader, *args, **kwargs):
             self.__dict__.update(kwargs)
             config_data = get_config_json()
 
+<<<<<<< HEAD
             self.host = kwargs.get('host', config_data.get('ftp').get('host'))
             self.user = kwargs.get('user', 
                         config_data.get('ftp').get('user'))
@@ -267,6 +271,16 @@ def factory_uploader(type_uploader, *args, **kwargs):
                         config_data.get('ftp').get('passwd'))
             self.path = normalize_path(kwargs.get('path', \
                         config_data.get('ftp').get('path')))
+=======
+            self.host = kwargs.get('host',
+                                   config_data.get('ftp').get('host'))
+            self.user = kwargs.get('user',
+                                   config_data.get('ftp').get('user'))
+            self.passwd = kwargs.get('passwd',
+                                     config_data.get('ftp').get('passwd'))
+            self.path = normalize_path(kwargs.get('path',
+                                       config_data.get('ftp').get('path')))
+>>>>>>> e24ebd6a159f621b2fb34084d27e1e3764a10e38
 
             self.name_backup = kwargs.get('name_backup', None)
 
@@ -289,21 +303,33 @@ def factory_uploader(type_uploader, *args, **kwargs):
                 self.conn.mkd(dirname)
             except Exception, e:
                 raise SystemExit(_error_codes.get(13).
+<<<<<<< HEAD
                                     format(dirname, self.conn.pwd(), e))
+=======
+                                 format(dirname, self.conn.pwd(), e))
+>>>>>>> e24ebd6a159f621b2fb34084d27e1e3764a10e38
 
         def change_dir(self, dirname):
             try:
                 self.conn.cwd(dirname)
             except Exception, e:
                 raise SystemExit(_error_codes.get(14).format(dirname, e))
+<<<<<<< HEAD
         
+=======
+
+>>>>>>> e24ebd6a159f621b2fb34084d27e1e3764a10e38
         def send_file(self, filename):
             try:
                 backup_file = open(filename, 'rb')
                 self.conn.storbinary('STOR ' + filename, backup_file)
             except Exception, e:
                 raise SystemExit(_error_codes.get(15).
+<<<<<<< HEAD
                                     format(filename, self.path, e))
+=======
+                                 format(filename, path, e))
+>>>>>>> e24ebd6a159f621b2fb34084d27e1e3764a10e38
 
         def delete_file(self, filename):
             try:
@@ -324,7 +350,7 @@ def factory_uploader(type_uploader, *args, **kwargs):
             Return all files in the actual directory without '.' and '..'
             '''
             ret = []
-            
+
             for path in self.conn.nlst():
                 if path in ['.', '..']:
                     continue
@@ -346,17 +372,22 @@ def factory_uploader(type_uploader, *args, **kwargs):
 
                     if not folder in self.conn.nlst():
                         self.mkdir(folder)
-                    
+
                     self.change_dir(folder)
+<<<<<<< HEAD
         
+=======
+
+>>>>>>> e24ebd6a159f621b2fb34084d27e1e3764a10e38
         def upload(self):
             self.connect()
-            
-            path = normalize_path(self.path) + 'week-' \
-                    + str(datetime.datetime.now().isocalendar()[1])
+
+            path = (normalize_path(self.path) + 'week-' +
+                    str(datetime.datetime.now().isocalendar()[1]))
             self.goto_path(path)
 
-            print('Uploading file to {0} in {1}'.format(self.host, self.conn.pwd()))
+            print('Uploading file to {0} in {1}'.format(self.host,
+                                                        self.conn.pwd()))
             name_backup = self.name_backup.split('/')[-1]
             self.send_file(name_backup)
             self.delete()
@@ -383,17 +414,50 @@ def factory_uploader(type_uploader, *args, **kwargs):
                 self.change_dir(path)
 
                 for backup in self.list_files():
-                    if get_diff_date(self.get_file_date(backup))  >= dif:
+                    if get_diff_date(self.get_file_date(backup)) >= dif:
                         # Add full path of backup
                         ret.append(self.conn.pwd() + '/' + backup)
-                
+
                 self.change_dir('..')
 
             return ret
 
+<<<<<<< HEAD
+=======
+    class DropboxStorage(object):
+
+        def __init__(self, *args, **kwargs):
+            super(DropboxStorage, self).__init__()
+            self.__dict__.update(kwargs)
+            config_data = get_config_json()
+
+            self.auth_token = config_data.get('dropbox').get('auth_token')
+            self.path = config_data.get('dropbox').get('path')
+            self.name_backup = kwargs.get('name_backup', None)
+            self.client = dropbox.client.DropboxClient(self.auth_token)
+            if not self.name_backup:
+                raise SystemExit(_error_codes.get(103))
+
+        def send_file(self, filename):
+            try:
+                backup_file = open(filename, 'rb')
+                response = self.client.put_file(filename, backup_file)
+                print('Uploading file {0} to directory "{1}" on Dropbox'.
+                      format(filename,
+                      response.get('root')))
+            except Exception, e:
+                raise SystemExit(_error_codes.get(115).format(
+                                 filename, 'Dropbox', e))
+
+        def upload(self):
+            name_backup = self.name_backup.split('/')[-1]
+            self.send_file(name_backup)
+
+>>>>>>> e24ebd6a159f621b2fb34084d27e1e3764a10e38
     uploaders = {'S3': AWSS3,
                  'Glacier': AWSGlacier,
-                 'FTP': FTP}
+                 'FTP': FTP,
+                 'Dropbox': DropboxStorage}
 
     upload = uploaders.get(type_uploader)(*args, **kwargs)
 
@@ -448,27 +512,24 @@ def get_config_json():
     return config_data
 
 
-def configure():
+def configure(service=None):
     print('''
     Zoort v-{0}
     Please fill all fields for configure Zoort.
     '''.format(__version__))
     # Check if is root user
-    if os.geteuid() != 0:
-        raise SystemExit(_error_codes.get(109))
+    # if os.geteuid() != 0:
+        # raise SystemExit(_error_codes.get(109))
     config_dict = dict()
     config_dict['admin_user'] = get_input('MongoDB User Admin: ')
     config_dict['admin_password'] = \
         get_input('MongoDB Password Admin (Is hidden): ', True)
-    # Define dict to aws key
-    config_dict['aws'] = dict()
 
-    # AWS Variables
-    config_dict['aws']['aws_access_key'] = \
-        get_input('AWS Access Key (Is hidden): ', True)
-    config_dict['aws']['aws_secret_key'] = \
-        get_input('AWS Secret Key (Is hidden): ', True)
+    if 'aws' in service:
+        # Define dict to aws key
+        config_dict['aws'] = dict()
 
+<<<<<<< HEAD
     try:
         if int(get_input('Do you want use Amazon Web Services S3? '
                          ' (1 - Yes / 0 - No): ', verify_type=int)):
@@ -491,6 +552,63 @@ def configure():
                           '(Number please) ', verify_type=int)
     except ValueError:
         raise SystemExit(_error_codes.get(108))
+=======
+        # AWS Variables
+        config_dict['aws']['aws_access_key'] = \
+            get_input('AWS Access Key (Is hidden): ', True)
+        config_dict['aws']['aws_secret_key'] = \
+            get_input('AWS Secret Key (Is hidden): ', True)
+
+        try:
+            if int(get_input('Do you want use Amazon Web Services S3? '
+                             ' (1 - Yes / 0 - No): ', verify_type=int)):
+                config_dict['aws']['aws_bucket_name'] = \
+                    get_input('AWS Bucket S3 name: ')
+            if int(get_input('Do you want use Amazon Web Services Glacier? '
+                             ' (1 - Yes / 0 - No): ', verify_type=int)):
+                config_dict['aws']['aws_vault_name'] = \
+                    get_input('AWS Vault Glacier name: ')
+                config_dict['aws']['aws_key_name'] = \
+                    get_input('Key name for backups file: ')
+                config_dict['aws']['password_file'] = \
+                    get_input('Password for encrypt'
+                              'with AES (Is hidden): ', True)
+                config_dict['delete_backup'] = \
+                    int(get_input('Do you want delete old backups? '
+                                  ' (1 - Yes / 0 - No): ', verify_type=int))
+            if config_dict['delete_backup']:
+                config_dict['delete_weeks'] = \
+                    get_input('When weeks before of backups'
+                              'do you want delete? '
+                              '(Number please) ', verify_type=int)
+        except ValueError:
+            raise SystemExit(_error_codes.get(108))
+
+    if 'dropbox' in service:
+        # Define dict to dropbox key
+        config_dict['dropbox'] = dict()
+        # Dropbox Variables
+        config_dict['dropbox']['app_key'] = \
+            get_input('Dropbox app key: ')
+        config_dict['dropbox']['secret_key'] = \
+            get_input('Dropbox secret key: ')
+        try:
+            flow = dropbox.client.DropboxOAuth2FlowNoRedirect(
+                config_dict['dropbox']['app_key'],
+                config_dict['dropbox']['secret_key'])
+            authorize_url = flow.start()
+            config_dict['dropbox']['auth_code'] = \
+                get_input('Go to ' + authorize_url + ', allow,' +
+                          'an put the code here: ')
+            access_token, user_id = flow.finish(
+                config_dict['dropbox']['auth_code'])
+            config_dict['dropbox']['auth_token'] = \
+                get_input('This is your access token ' + access_token +
+                          ' Type the code: ')
+
+        except ValueError:
+            raise SystemExit(_error_codes.get(108))
+>>>>>>> e24ebd6a159f621b2fb34084d27e1e3764a10e38
 
     with open('/etc/zoort/config.json', 'w') as config:
         json.dump(config_dict, config)
@@ -603,6 +721,9 @@ def optional_actions(encrypt, path, compress_file, **kwargs):
                          path=os.path.join(os.path.expanduser('~'),
                                            '.zoort.db'),
                          action='upload')
+    if kwargs.get('dropbox') in yes:
+        factory_uploader('Dropbox', name_backup=file_to_upload,
+                         action='upload')
 
 
 @load_config
@@ -616,7 +737,11 @@ def main():
     if args.get('decrypt'):
         decrypt_file(args.get('<path>'))
     if args.get('configure'):
-        configure()
+        configure(service='all')
+    if args.get('configure-aws'):
+        configure(service='aws')
+    if args.get('configure-dropbox'):
+        configure(service='dropbox')
     if args.get('download_all'):
         download_all()
 
@@ -636,6 +761,7 @@ def backup_database(args):
     path = args.get('--path') or os.getcwd()
     s3 = args.get('--upload_s3')
     glacier = args.get('--upload_glacier')
+    dropbox = args.get('--upload_dropbox')
     encrypt = args.get('--encrypt') or 'Y'
 
     if not database:
@@ -660,7 +786,7 @@ def backup_database(args):
 
     shutil.rmtree(normalize_path(path) + 'dump')
 
-    optional_actions(encrypt, path, compress_file, s3=s3, glacier=glacier)
+    optional_actions(encrypt, path, compress_file, s3=s3, glacier=glacier, dropbox=dropbox)
 
 
 def backup_all(args):
@@ -673,6 +799,7 @@ def backup_all(args):
     path = args.get('--path')
     s3 = args.get('--upload_s3')
     glacier = args.get('--upload_glacier')
+    dropbox = args.get('--upload_dropbox')
     encrypt = args.get('--encrypt') or 'Y'
 
     if (ADMIN_USER and ADMIN_PASSWORD):
@@ -699,7 +826,7 @@ def backup_all(args):
 
     shutil.rmtree(normalize_path(path) + 'dump')
 
-    optional_actions(encrypt, path, compress_file, s3=s3, glacier=glacier)
+    optional_actions(encrypt, path, compress_file, s3=s3, glacier=glacier, dropbox=dropbox)
 
 
 if __name__ == '__main__':
