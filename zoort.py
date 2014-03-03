@@ -265,15 +265,14 @@ def factory_uploader(type_uploader, *args, **kwargs):
             self.__dict__.update(kwargs)
             config_data = get_config_json()
 
-<<<<<<< HEAD
             self.host = kwargs.get('host', config_data.get('ftp').get('host'))
-            self.user = kwargs.get('user', 
-                        config_data.get('ftp').get('user'))
-            self.passwd = kwargs.get('passwd', 
-                        config_data.get('ftp').get('passwd'))
-            self.path = normalize_path(kwargs.get('path', \
-                        config_data.get('ftp').get('path')))
-=======
+            self.user = kwargs.get('user',
+                                   config_data.get('ftp').get('user'))
+            self.passwd = kwargs.get('passwd',
+                                     config_data.get('ftp').get('passwd'))
+            self.path = normalize_path(kwargs.get('path',
+                                       config_data.get('ftp').get('path')))
+
             self.host = kwargs.get('host',
                                    config_data.get('ftp').get('host'))
             self.user = kwargs.get('user',
@@ -282,7 +281,6 @@ def factory_uploader(type_uploader, *args, **kwargs):
                                      config_data.get('ftp').get('passwd'))
             self.path = normalize_path(kwargs.get('path',
                                        config_data.get('ftp').get('path')))
->>>>>>> e24ebd6a159f621b2fb34084d27e1e3764a10e38
 
             self.name_backup = kwargs.get('name_backup', None)
 
@@ -304,34 +302,22 @@ def factory_uploader(type_uploader, *args, **kwargs):
             try:
                 self.conn.mkd(dirname)
             except Exception, e:
-                raise SystemExit(_error_codes.get(13).
-<<<<<<< HEAD
-                                    format(dirname, self.conn.pwd(), e))
-=======
-                                 format(dirname, self.conn.pwd(), e))
->>>>>>> e24ebd6a159f621b2fb34084d27e1e3764a10e38
+                raise SystemExit(_error_codes.get(13).format(
+                    dirname, self.conn.pwd(), e))
 
         def change_dir(self, dirname):
             try:
                 self.conn.cwd(dirname)
             except Exception, e:
                 raise SystemExit(_error_codes.get(14).format(dirname, e))
-<<<<<<< HEAD
-        
-=======
 
->>>>>>> e24ebd6a159f621b2fb34084d27e1e3764a10e38
         def send_file(self, filename):
             try:
                 backup_file = open(filename, 'rb')
                 self.conn.storbinary('STOR ' + filename, backup_file)
             except Exception, e:
                 raise SystemExit(_error_codes.get(15).
-<<<<<<< HEAD
-                                    format(filename, self.path, e))
-=======
-                                 format(filename, path, e))
->>>>>>> e24ebd6a159f621b2fb34084d27e1e3764a10e38
+                                 format(filename, self.path, e))
 
         def delete_file(self, filename):
             try:
@@ -376,11 +362,7 @@ def factory_uploader(type_uploader, *args, **kwargs):
                         self.mkdir(folder)
 
                     self.change_dir(folder)
-<<<<<<< HEAD
-        
-=======
 
->>>>>>> e24ebd6a159f621b2fb34084d27e1e3764a10e38
         def upload(self):
             self.connect()
 
@@ -424,8 +406,6 @@ def factory_uploader(type_uploader, *args, **kwargs):
 
             return ret
 
-<<<<<<< HEAD
-=======
     class DropboxStorage(object):
 
         def __init__(self, *args, **kwargs):
@@ -446,7 +426,7 @@ def factory_uploader(type_uploader, *args, **kwargs):
                 response = self.client.put_file(filename, backup_file)
                 print('Uploading file {0} to directory "{1}" on Dropbox'.
                       format(filename,
-                      response.get('root')))
+                             response.get('root')))
             except Exception, e:
                 raise SystemExit(_error_codes.get(115).format(
                                  filename, 'Dropbox', e))
@@ -455,9 +435,6 @@ def factory_uploader(type_uploader, *args, **kwargs):
             name_backup = self.name_backup.split('/')[-1]
             self.send_file(name_backup)
 
-<<<<<<< HEAD
->>>>>>> e24ebd6a159f621b2fb34084d27e1e3764a10e38
-=======
     class SwiftStorage(object):
         def __init__(self, *args, **kwargs):
             super(SwiftStorage, self).__init__()
@@ -490,10 +467,11 @@ def factory_uploader(type_uploader, *args, **kwargs):
         def send_file(self, filename, **kwargs):
             try:
                 backup_file = open(filename, 'rb')
-                response = self.conn.put_object(self.container, filename, backup_file)
+                response = self.conn.put_object(
+                    self.container, filename, backup_file)
                 print('Uploading file {0} to container "{1}" on swift'.
                       format(filename,
-                      self.container))
+                             self.container))
             except Exception, e:
                 raise SystemExit(_error_codes.get(115).format(
                                  filename, 'Swift', e))
@@ -502,7 +480,6 @@ def factory_uploader(type_uploader, *args, **kwargs):
             name_backup = self.name_backup.split('/')[-1]
             self.send_file(name_backup)
 
->>>>>>> 90005cb17db08ccb5b5ab4a3546573a2416c543c
     uploaders = {'S3': AWSS3,
                  'Glacier': AWSGlacier,
                  'FTP': FTP,
@@ -579,7 +556,6 @@ def configure(service=None):
         # Define dict to aws key
         config_dict['aws'] = dict()
 
-<<<<<<< HEAD
     try:
         if int(get_input('Do you want use Amazon Web Services S3? '
                          ' (1 - Yes / 0 - No): ', verify_type=int)):
@@ -600,85 +576,51 @@ def configure(service=None):
             config_dict['delete_weeks'] = \
                 get_input('When weeks before of backups do you want delete? '
                           '(Number please) ', verify_type=int)
+
+        if 'dropbox' in service:
+            # Define dict to dropbox key
+            config_dict['dropbox'] = dict()
+            # Dropbox Variables
+            try:
+                config_dict['dropbox']['app_key'] = \
+                    get_input('Dropbox app key: ')
+                config_dict['dropbox']['secret_key'] = \
+                    get_input('Dropbox secret key: ')
+                flow = dropbox.client.DropboxOAuth2FlowNoRedirect(
+                    config_dict['dropbox']['app_key'],
+                    config_dict['dropbox']['secret_key'])
+                authorize_url = flow.start()
+                config_dict['dropbox']['auth_code'] = \
+                    get_input('Go to ' + authorize_url + ', allow,' +
+                              'an put the code here: ')
+                access_token, user_id = flow.finish(
+                    config_dict['dropbox']['auth_code'])
+                config_dict['dropbox']['auth_token'] = \
+                    get_input('This is your access token ' + access_token +
+                              ' Type the code: ')
+            except ValueError:
+                raise SystemExit(_error_codes.get(108))
+        if 'swift' in service:
+            # Define dict to swift
+            config_dict['swift'] = dict()
+            # swift variables
+            try:
+                config_dict['swift']['auth_url'] = \
+                    get_input('Swift Auth url: ')
+                config_dict['swift']['access_key'] = \
+                    get_input('Swift username: ')
+                config_dict['swift']['secret_key'] = \
+                    get_input('Swift password: ')
+                config_dict['swift']['auth_version'] = \
+                    get_input('Swift version auth used: ')
+                config_dict['swift']['tenant_name'] = \
+                    get_input('Swift tenant used: ')
+                config_dict['swift']['container'] = \
+                    get_input('Swift container used: ')
+            except ValueError:
+                raise SystemExit(_error_codes.get(108))
     except ValueError:
         raise SystemExit(_error_codes.get(108))
-=======
-        # AWS Variables
-        config_dict['aws']['aws_access_key'] = \
-            get_input('AWS Access Key (Is hidden): ', True)
-        config_dict['aws']['aws_secret_key'] = \
-            get_input('AWS Secret Key (Is hidden): ', True)
-
-        try:
-            if int(get_input('Do you want use Amazon Web Services S3? '
-                             ' (1 - Yes / 0 - No): ', verify_type=int)):
-                config_dict['aws']['aws_bucket_name'] = \
-                    get_input('AWS Bucket S3 name: ')
-            if int(get_input('Do you want use Amazon Web Services Glacier? '
-                             ' (1 - Yes / 0 - No): ', verify_type=int)):
-                config_dict['aws']['aws_vault_name'] = \
-                    get_input('AWS Vault Glacier name: ')
-                config_dict['aws']['aws_key_name'] = \
-                    get_input('Key name for backups file: ')
-                config_dict['aws']['password_file'] = \
-                    get_input('Password for encrypt'
-                              'with AES (Is hidden): ', True)
-                config_dict['delete_backup'] = \
-                    int(get_input('Do you want delete old backups? '
-                                  ' (1 - Yes / 0 - No): ', verify_type=int))
-            if config_dict['delete_backup']:
-                config_dict['delete_weeks'] = \
-                    get_input('When weeks before of backups'
-                              'do you want delete? '
-                              '(Number please) ', verify_type=int)
-        except ValueError:
-            raise SystemExit(_error_codes.get(108))
-
-    if 'dropbox' in service:
-        # Define dict to dropbox key
-        config_dict['dropbox'] = dict()
-        # Dropbox Variables
-        config_dict['dropbox']['app_key'] = \
-            get_input('Dropbox app key: ')
-        config_dict['dropbox']['secret_key'] = \
-            get_input('Dropbox secret key: ')
-        try:
-            flow = dropbox.client.DropboxOAuth2FlowNoRedirect(
-                config_dict['dropbox']['app_key'],
-                config_dict['dropbox']['secret_key'])
-            authorize_url = flow.start()
-            config_dict['dropbox']['auth_code'] = \
-                get_input('Go to ' + authorize_url + ', allow,' +
-                          'an put the code here: ')
-            access_token, user_id = flow.finish(
-                config_dict['dropbox']['auth_code'])
-            config_dict['dropbox']['auth_token'] = \
-                get_input('This is your access token ' + access_token +
-                          ' Type the code: ')
-
-        except ValueError:
-            raise SystemExit(_error_codes.get(108))
->>>>>>> e24ebd6a159f621b2fb34084d27e1e3764a10e38
-
-    if 'swift' in service:
-        # Define dict to swift
-        config_dict['swift'] = dict()
-        # swift variables
-        try:
-            config_dict['swift']['auth_url'] = \
-                get_input('Swift Auth url: ')
-            config_dict['swift']['access_key'] = \
-                get_input('Swift username: ')
-            config_dict['swift']['secret_key'] = \
-                get_input('Swift password: ')
-            config_dict['swift']['auth_version'] = \
-                get_input('Swift version auth used: ')
-            config_dict['swift']['tenant_name'] = \
-                get_input('Swift tenant used: ')
-            config_dict['swift']['container'] = \
-                get_input('Swift container used: ')
-        except ValueError:
-            raise SystemExit(_error_codes.get(108))
 
     with open('/etc/zoort/config.json', 'w') as config:
         json.dump(config_dict, config)
@@ -862,7 +804,9 @@ def backup_database(args):
 
     shutil.rmtree(normalize_path(path) + 'dump')
 
-    optional_actions(encrypt, path, compress_file, s3=s3, glacier=glacier, dropbox=dropbox, swift=swift)
+    optional_actions(encrypt, path, compress_file,
+                     s3=s3, glacier=glacier, dropbox=dropbox,
+                     swift=swift)
 
 
 def backup_all(args):
@@ -903,7 +847,8 @@ def backup_all(args):
 
     shutil.rmtree(normalize_path(path) + 'dump')
 
-    optional_actions(encrypt, path, compress_file, s3=s3, glacier=glacier, dropbox=dropbox, swift=swift)
+    optional_actions(encrypt, path, compress_file, s3=s3, glacier=glacier,
+                     dropbox=dropbox, swift=swift)
 
 
 if __name__ == '__main__':
