@@ -671,14 +671,14 @@ def normalize_path(path):
     return path
 
 
-def compress_folder_dump(path):
+def compress_folder_dump(path, target):
     '''
     Compress folder dump to tar.gz file
     '''
     import tarfile
     if not path or not os.path.isdir(path):
         raise SystemExit(_error_codes.get(105))
-    name_out_file = ('dump-' +
+    name_out_file = (target + 'dump-' +
                      datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S'))
     tar = tarfile.open(name_out_file + '.tar.gz', 'w:gz')
     tar.add(path, arcname='dump')
@@ -800,7 +800,9 @@ def backup_database(args):
                        database=database,
                        host=host,
                        path=path))
-    compress_file = compress_folder_dump(normalize_path(path) + 'dump')
+
+    compress_file = compress_folder_dump(
+        normalize_path(path) + 'dump', normalize_path(path))
 
     shutil.rmtree(normalize_path(path) + 'dump')
 
@@ -843,7 +845,8 @@ def backup_all(args):
                        password=password,
                        path=path))
 
-    compress_file = compress_folder_dump(normalize_path(path) + 'dump')
+    compress_file = compress_folder_dump(
+        normalize_path(path) + 'dump', normalize_path(path))
 
     shutil.rmtree(normalize_path(path) + 'dump')
 
