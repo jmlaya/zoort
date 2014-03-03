@@ -6,7 +6,7 @@
 '''zoort
 
 Usage:
-  zoort backup <database> [--path=<path>] [--upload_s3=<s3>] [--upload_glacier=<glacier>] [--upload_dropbox=<dropbox>] [--encrypt=<encrypt>]
+  zoort backup <database> [--path=<path>] [--upload_s3=<s3>] [--upload_glacier=<glacier>] [--upload_dropbox=<dropbox>] [--upload_swift=<swift>] [--encrypt=<encrypt>]
   zoort backup <database> <user> <password> [--path=<path>] [--upload_s3=<s3>] [--upload_glacier=<glacier>] [--encrypt=<encrypt>]
   zoort backup <database> <user> <password> <host> [--path=<path>] [--upload_s3=<s3>] [--upload_glacier=<glacier>] [--encrypt=<encrypt>]
   zoort backup_all [--auth=<auth>] [--path=<path>] [--upload_s3=<s3>] [--upload_glacier=<glacier>] [--encrypt=<encrypt>]
@@ -15,6 +15,7 @@ Usage:
   zoort configure
   zoort configure-aws
   zoort configure-dropbox
+  zoort configure-swift
   zoort --version
   zoort --help
 
@@ -39,6 +40,7 @@ import ftplib
 import dropbox
 from boto.s3.key import Key
 from docopt import docopt
+from swiftclient import Connection, ClientException, get_keystoneclient_2_0
 from functools import wraps
 from fabric.api import local, hide
 from fabric.colors import blue, red, green
@@ -425,10 +427,55 @@ def factory_uploader(type_uploader, *args, **kwargs):
             name_backup = self.name_backup.split('/')[-1]
             self.send_file(name_backup)
 
+    class SwiftStorage(object):
+        def __init__(self, *args, **kwargs):
+            super(SwiftStorage, self).__init__()
+            self.__dict__.update(kwargs)
+            config_data = get_config_json()
+            # Load config variables.
+            self.auth_url = config_data.get('swift').get('auth_url')
+            self.access_key = config_data.get('swift').get('access_key')
+            self.secret_key = config_data.get('swift').get('secret_key')
+            self.auth_version = config_data.get('swift').get('auth_version')
+            self.tenant_name = config_data.get('swift').get('tenant_name')
+            self.insecure = True
+            self.container = config_data.get('swift').get('container')
+            self.name_backup = kwargs.get('name_backup', None)
+            self.conn = Connection(
+                authurl=self.auth_url,
+                user=self.access_key,
+                key=self.secret_key,
+                auth_version=self.auth_version,
+                tenant_name=self.tenant_name,
+                insecure=self.insecure)
+            try:
+                self.conn.head_container(self.container)
+            except:
+                self.conn.put_container(self.container)
+
+            if not self.name_backup:
+                raise SystemExit(_error_codes.get(103))
+
+        def send_file(self, filename, **kwargs):
+            try:
+                backup_file = open(filename, 'rb')
+                response = self.conn.put_object(self.container, filename, backup_file)
+                print('Uploading file {0} to container "{1}" on swift'.
+                      format(filename,
+                      self.container))
+            except Exception, e:
+                raise SystemExit(_error_codes.get(115).format(
+                                 filename, 'Swift', e))
+
+        def upload(self):
+            name_backup = self.name_backup.split('/')[-1]
+            self.send_file(name_backup)
+
     uploaders = {'S3': AWSS3,
                  'Glacier': AWSGlacier,
                  'FTP': FTP,
-                 'Dropbox': DropboxStorage}
+                 'Dropbox': DropboxStorage,
+                 'Swift': SwiftStorage}
 
     upload = uploaders.get(type_uploader)(*args, **kwargs)
 
@@ -488,8 +535,8 @@ def configure(service=None):
     Please fill all fields for configure Zoort.
     '''.format(__version__))
     # Check if is root user
-    # if os.geteuid() != 0:
-        # raise SystemExit(_error_codes.get(109))
+    if os.geteuid() != 0:
+        raise SystemExit(_error_codes.get(109))
     config_dict = dict()
     config_dict['admin_user'] = get_input('MongoDB User Admin: ')
     config_dict['admin_password'] = \
@@ -552,6 +599,26 @@ def configure(service=None):
                 get_input('This is your access token ' + access_token +
                           ' Type the code: ')
 
+        except ValueError:
+            raise SystemExit(_error_codes.get(108))
+
+    if 'swift' in service:
+        # Define dict to swift
+        config_dict['swift'] = dict()
+        # swift variables
+        try:
+            config_dict['swift']['auth_url'] = \
+                get_input('Swift Auth url: ')
+            config_dict['swift']['access_key'] = \
+                get_input('Swift username: ')
+            config_dict['swift']['secret_key'] = \
+                get_input('Swift password: ')
+            config_dict['swift']['auth_version'] = \
+                get_input('Swift version auth used: ')
+            config_dict['swift']['tenant_name'] = \
+                get_input('Swift tenant used: ')
+            config_dict['swift']['container'] = \
+                get_input('Swift container used: ')
         except ValueError:
             raise SystemExit(_error_codes.get(108))
 
@@ -670,6 +737,9 @@ def optional_actions(encrypt, path, compress_file, **kwargs):
     if kwargs.get('dropbox') in yes:
         factory_uploader('Dropbox', name_backup=file_to_upload,
                          action='upload')
+    if kwargs.get('swift') in yes:
+        factory_uploader('Swift', name_backup=file_to_upload,
+                         action='upload')
 
 
 @load_config
@@ -688,6 +758,8 @@ def main():
         configure(service='aws')
     if args.get('configure-dropbox'):
         configure(service='dropbox')
+    if args.get('configure-swift'):
+        configure(service='swift')
     if args.get('download_all'):
         download_all()
 
@@ -708,6 +780,7 @@ def backup_database(args):
     s3 = args.get('--upload_s3')
     glacier = args.get('--upload_glacier')
     dropbox = args.get('--upload_dropbox')
+    swift = args.get('--upload_swift')
     encrypt = args.get('--encrypt') or 'Y'
 
     if not database:
@@ -732,7 +805,7 @@ def backup_database(args):
 
     shutil.rmtree(normalize_path(path) + 'dump')
 
-    optional_actions(encrypt, path, compress_file, s3=s3, glacier=glacier, dropbox=dropbox)
+    optional_actions(encrypt, path, compress_file, s3=s3, glacier=glacier, dropbox=dropbox, swift=swift)
 
 
 def backup_all(args):
@@ -746,6 +819,7 @@ def backup_all(args):
     s3 = args.get('--upload_s3')
     glacier = args.get('--upload_glacier')
     dropbox = args.get('--upload_dropbox')
+    swift = args.get('--upload_swift')
     encrypt = args.get('--encrypt') or 'Y'
 
     if (ADMIN_USER and ADMIN_PASSWORD):
@@ -769,7 +843,7 @@ def backup_all(args):
 
     shutil.rmtree(normalize_path(path) + 'dump')
 
-    optional_actions(encrypt, path, compress_file, s3=s3, glacier=glacier, dropbox=dropbox)
+    optional_actions(encrypt, path, compress_file, s3=s3, glacier=glacier, dropbox=dropbox, swift=swift)
 
 
 if __name__ == '__main__':
