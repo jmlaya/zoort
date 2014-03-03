@@ -559,9 +559,9 @@ def encrypt_file(path, output, password=None):
     '''
     Encrypt file with AES method and password.
     '''
-    global PASSWORD_FILE
     if not password:
         password = PASSWORD_FILE
+    print(PASSWORD_FILE)
     query = 'openssl aes-128-cbc -salt -in {0} -out {1} -k {2}'
     with hide('output'):
         local(query.format(path, output, password))
