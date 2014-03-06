@@ -342,7 +342,7 @@ def factory_uploader(type_uploader, *args, **kwargs):
             Change to 'path' directory or create if not exist
             '''
             try:
-                self.conn.cwd(self.folder)
+                self.conn.cwd(path)
             except:
                 self.change_dir('/')
                 for folder in path.split('/'):
